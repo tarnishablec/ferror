@@ -1,6 +1,6 @@
 import {describe, expect, test} from "bun:test";
-import {defineError, is} from "ferro"
-import {ErrorBrand} from "ferro/types";
+import {defineError, is, isDefinedError} from "@ferror/core"
+import {ErrorBrand, type InferDefinedError} from "@ferror/core/types";
 
 const AppError = defineError({
     NotFound: (id: number) => `Resource ${id} not found`,
@@ -8,10 +8,16 @@ const AppError = defineError({
     DatabaseError: (query: string) => `Query failed: ${query}`,
 });
 
+type AppErrorType = InferDefinedError<typeof AppError>;
+
 describe("defineError strict type testing", () => {
 
     test("static error should be correctly generated", () => {
         const err = AppError.Unauthorized();
+
+        const genericErr = err as AppErrorType;
+
+        expect(isDefinedError(genericErr)).toBe(true);
 
         expect(err.code).toBe("Unauthorized");
         expect(err.message).toBe("User is not logged in");
@@ -51,10 +57,6 @@ describe("defineError strict type testing", () => {
 
             const isError = e instanceof Error;
             expect(isError).toBe(true);
-
-            if (isError) {
-                console.log(e.name);
-            }
 
             const isDBError = is(e, AppError.DatabaseError);
             expect(isDBError).toBe(true);

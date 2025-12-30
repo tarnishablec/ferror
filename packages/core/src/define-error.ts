@@ -55,15 +55,3 @@ export function defineError<const M extends ErrorMap>(
     return result as DefinedErrorFactory<M>;
 }
 
-export function is<K extends string, P extends ErrorSpec>(
-    error: unknown,
-    factory: ErrorFactory<K, P>
-): error is DefinedError<K, P> {
-    if (!(error instanceof Error) || !(ErrorBrand in error)) {
-        return false;
-    }
-
-    return error.name === factory.code;
-}
-
-

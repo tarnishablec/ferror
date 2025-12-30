@@ -30,3 +30,8 @@ export type ErrorFactory<K extends string, S extends ErrorSpec> =
 export type DefinedErrorFactory<M extends ErrorMap> = {
     readonly [K in keyof M & string]: ErrorFactory<K, M[K]>;
 };
+
+export type InferDefinedError<F> =
+    F extends Record<string, (...args: any[]) => infer R>
+        ? R
+        : never;

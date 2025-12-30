@@ -1,1 +1,2 @@
-export {defineError, is} from './define-error'
+export {defineError} from './define-error'
+export {is, isDefinedError} from './is'
