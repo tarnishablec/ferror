@@ -1,6 +1,6 @@
 import {describe, expect, test} from "bun:test";
 import {defineError, is, isDefinedError, scopeOf} from "@ferror/core"
-import {ErrorBrand, type ErrorOf} from "@ferror/core/types";
+import {CodeField, ErrorBrand, type ErrorOf, PayloadField, ScopeField} from "@ferror/core/types";
 
 const AppError = defineError({
     NotFound: (id: number) => `Resource ${id} not found`,
@@ -17,7 +17,7 @@ describe("defineError strict type testing", () => {
 
         if (isDefinedError(err)) {
             expect(isDefinedError(err)).toBe(true);
-            switch ((err as AppErrorType).code) { // type auto infer
+            switch ((err as AppErrorType)[CodeField]) { // type auto infer
                 case "DatabaseError":
                     expect(false).toBe(true);
                     throw new Error("Should not happen");
@@ -29,15 +29,16 @@ describe("defineError strict type testing", () => {
             }
 
         }
-        expect(err.code).toBe("Unauthorized");
+
+        expect(err[CodeField]).toBe("Unauthorized");
         expect(err.message).toBe("User is not logged in");
-        expect(err[ErrorBrand]).toBe(true);
-        expect(err.payloads).toBeUndefined();
+        expect(Reflect.get(err, ErrorBrand)).toBe(true);
+        expect(Reflect.get(err, PayloadField)).toBeArrayOfSize(0);
     });
 
     test("scope matching should work", () => {
         const err = AppError.Unauthorized();
-        expect(err.scope).toBe(scopeOf(AppError));
+        expect(err[ScopeField]).toBe(scopeOf(AppError));
         expect(isDefinedError(err, scopeOf(AppError))).toBe(true);
         expect(isDefinedError(err, Symbol())).toBe(false);
     })
@@ -45,11 +46,11 @@ describe("defineError strict type testing", () => {
     test("error with parameters should correctly capture payload", () => {
         const err = AppError.NotFound(404);
 
-        expect(err.code).toBe("NotFound");
+        expect(err[CodeField]).toBe("NotFound");
         expect(err.message).toBe("Resource 404 not found");
         // Verify payload is a tuple [404]
-        expect(err.payloads).toEqual([404]);
-        expect(err.payloads[0]).toBe(404);
+        expect(Reflect.get(err, PayloadField)).toEqual([404]);
+        expect(Reflect.get(err, PayloadField)).toBeArrayOfSize(1);
     });
 
     test("should support native Error.cause (#[source])", () => {
@@ -60,7 +61,10 @@ describe("defineError strict type testing", () => {
     });
 
     test("should be correctly captured in throw scenarios", () => {
-        const err = AppError.DatabaseError("SELECT *" as const);
+        const query = "SELECT *" as const;
+        const err = AppError.DatabaseError(query);
+
+        expect(err[PayloadField]).toEqual([query]);
 
         const fn = () => {
             throw err;
@@ -79,8 +83,7 @@ describe("defineError strict type testing", () => {
             expect(isDBError).toBe(true);
 
             if (isDBError) {
-                expect(e.code).toBe("DatabaseError");
-                expect(err.payloads).toEqual(["SELECT *"]);
+                expect(e[CodeField]).toBe("DatabaseError");
             }
         }
     });
@@ -89,10 +92,9 @@ describe("defineError strict type testing", () => {
         const err: ReturnType<typeof AppError.NotFound> = AppError.NotFound(1);
 
         // Mock switch-case logic
-        if (err.code === "NotFound") {
+        if (err[CodeField] === "NotFound") {
             // Here IDE should automatically infer err.payload[0] is number
-            const id = err.payloads[0];
-            expect(id).toBe(1);
+            expect(err[PayloadField]).toEqual([1]);
         }
     });
 });

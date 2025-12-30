@@ -1,28 +1,32 @@
 import {
+    CodeField,
     type DefinedError,
     ErrorBrand,
-    type ErrorCase,
     type ErrorFamily,
     type ErrorMap,
-    type ErrorSpec
+    PayloadField,
+    ScopeField
 } from "./types";
 
 
-class InternalBaseError<C extends string, P> extends Error implements DefinedError<C, P> {
+class InternalBaseError<C extends string, P extends readonly unknown[]> extends Error implements DefinedError<C, P> {
     readonly [ErrorBrand] = true as const;
+    readonly [ScopeField]: symbol;
+    readonly [PayloadField]: P;
+    readonly [CodeField]: C;
 
     constructor(
         public readonly code: C,
-        public readonly payloads: P,
+        args: P,
         readonly scope: symbol,
         message: string,
         options?: ErrorOptions
     ) {
         super(message, options);
         this.name = code;
-        this.scope = scope;
-        this.payloads = payloads;
-        Object.setPrototypeOf(this, new.target.prototype);
+        this[CodeField] = code;
+        this[ScopeField] = scope;
+        this[PayloadField] = args;
     }
 }
 
@@ -35,26 +39,39 @@ export function defineError<const M extends ErrorMap>(
     for (const key in map) {
         const spec = map[key];
 
-        if (typeof spec === "function") {
-            result[key] = (...args: unknown[]): DefinedError => {
-                const message = (spec as (...args: unknown[]) => string)(...args);
-                return new InternalBaseError(key, args, scope, message);
-            };
-        } else if (typeof spec === "string") {
-            result[key] = (options?: ErrorOptions): DefinedError<string, void> => {
-                return new InternalBaseError(key, undefined, scope, spec, options);
-            };
-        }
+        const factory = (...args: unknown[]) => {
+            let finalArgs = args;
+            let options: ErrorOptions | undefined;
 
-        const factory = result[key] as ErrorCase<string, ErrorSpec>;
-        Reflect.set(factory, "code", key);
-        Reflect.set(factory, "scope", scope);
+            if (typeof spec === "function") {
+                if (args.length > spec.length) {
+                    const lastArg = args[args.length - 1];
+                    if (typeof lastArg === "object" && lastArg !== null) {
+                        options = lastArg as ErrorOptions;
+                        finalArgs = args.slice(0, -1);
+                    }
+                }
+
+                const message = (spec as (...args: unknown[]) => string)(...finalArgs);
+                return new InternalBaseError(key, finalArgs, scope, message, options);
+            }
+
+            if (typeof spec === "string") {
+                options = args[0] as ErrorOptions | undefined;
+                return new InternalBaseError(key, [], scope, spec, options);
+            }
+        };
+
+        Reflect.set(factory, CodeField, key);
+        Reflect.set(factory, ScopeField, scope);
+
+        result[key] = factory;
     }
 
-    Reflect.set(result, "scope", scope);
+    Reflect.set(result, ScopeField, scope);
     return result as ErrorFamily<M>;
 }
 
 export function scopeOf<M extends ErrorMap>(errorFamily: ErrorFamily<M>) {
-    return Reflect.get(errorFamily, "scope");
+    return errorFamily[ScopeField];
 }
