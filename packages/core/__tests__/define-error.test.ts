@@ -6,17 +6,26 @@ const AppError = defineError({
     NotFound: (id: number) => `Resource ${id} not found`,
     Unauthorized: "User is not logged in",
     DatabaseError: (query: string) => `Query failed: ${query}`,
+    ShardError: (characterId: number, shard: string) => `Character & shard unmatch ${characterId} : ${shard}`
 });
 
 type AppErrorType = ErrorOf<typeof AppError>;
 
 describe("defineError strict type testing", () => {
 
+    test("should be correctly scoped", () => {
+        const err = AppError.Unauthorized();
+        expect(scopeOf(AppError)).toBe(scopeOf(err));
+        expect(scopeOf(AppError)).toBe(scopeOf(AppError.ShardError));
+        expect(scopeOf(AppError)).toBe(scopeOf(AppError.NotFound));
+        expect(scopeOf(AppError)).toBe(scopeOf(AppError.Unauthorized));
+    })
+
     test("static error should be correctly generated", () => {
         const err = AppError.Unauthorized();
 
-        if (isDefinedError(err)) {
-            expect(isDefinedError(err)).toBe(true);
+        if (isDefinedError(err, scopeOf(AppError))) {
+            expect(isDefinedError(err, scopeOf(AppError))).toBe(true);
             switch ((err as AppErrorType)[CodeField]) { // type auto infer
                 case "DatabaseError":
                     expect(false).toBe(true);
@@ -58,6 +67,10 @@ describe("defineError strict type testing", () => {
         const err = AppError.Unauthorized({cause: original});
 
         expect(err.cause).toBe(original);
+
+        const shardOriginal = new Error("Shard not found");
+        const shardErr = AppError.ShardError(1, "shard-1", {cause: shardOriginal});
+        expect(shardErr.cause).toBe(shardOriginal);
     });
 
     test("should be correctly captured in throw scenarios", () => {
