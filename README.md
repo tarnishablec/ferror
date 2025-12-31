@@ -1,4 +1,4 @@
-# ferror
+# thaterror
 
 To install dependencies:
 

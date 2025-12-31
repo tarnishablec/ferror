@@ -1,5 +1,5 @@
 {
-    "name": "ferror",
+    "name": "thaterror",
     "private": true,
     "workspaces": [
         "packages/*"

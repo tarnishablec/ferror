@@ -1,5 +1,5 @@
 {
-    "name": "@ferror/core",
+    "name": "@thaterror/core",
     "version": "1.0.0",
     "description": "",
     "main": "src/index.ts",
@@ -9,14 +9,11 @@
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/tarnishablec/ferror.git"
+        "url": "https://github.com/tarnishablec/thaterror.git"
     },
     "exports": {
         ".": {
             "import": "./src/index.ts"
-        },
-        "./types": {
-            "import": "./src/types.ts"
         }
     },
     "dependencies": {

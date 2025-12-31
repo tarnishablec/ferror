@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { defineError, is, isDefinedError, scopeOf } from "@ferror/core"
-import { CodeField, ErrorBrand, type ErrorUnionOf, PayloadField, ScopeField } from "@ferror/core/types";
+import { defineError, is, isDefinedError, scopeOf } from "@thaterror/core"
+import { CodeField, ErrorBrand, type ErrorUnionOf, PayloadField, ScopeField } from "@thaterror/core/types";
 
 export const AppError = defineError({
     NotFound: (id: number) => `Resource ${id} not found`,

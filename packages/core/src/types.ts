@@ -28,6 +28,9 @@ export type ExtractPayload<S extends ErrorSpec> =
 
 export type ErrorMap = Record<string, ErrorSpec>;
 
+export type ErrorUnionOfMap<M extends ErrorMap> = {
+    [K in keyof M & string]: DefinedError<K, ExtractPayload<M[K]>>;
+}[keyof M & string];
 
 export type ErrorCase<K extends string, S extends ErrorSpec> =
     ([S] extends [(...args: infer A) => string]
@@ -35,29 +38,21 @@ export type ErrorCase<K extends string, S extends ErrorSpec> =
         : (options?: ErrorOptions) => DefinedError<K, never[]>)
     & { readonly [CodeField]: K; readonly [ScopeField]: symbol };
 
-export type ErrorFamily<M extends ErrorMap> = {
+export type ErrorFamily<M extends ErrorMap, Es extends readonly [Error, ErrorUnionOfMap<M>][] = []> = {
     readonly [K in keyof M & string]: ErrorCase<K, M[K]>;
 } & {
     readonly [ScopeField]: symbol;
+} & {
+    enroll<E extends Error, K extends keyof M & string, C extends ErrorUnionOfMap<M>>(
+        errorClass: new (...args: never[]) => E,
+        errorCase: ErrorCase<K, M[K]> & ((...args: never[]) => C),
+        transformer?: (e: E)
+            => ExtractPayload<M[K]>): ErrorFamily<M, readonly [...Es, [E, C]]>;
+
+    from<E extends Es[number][0]>(error: E): Extract<Es[number], [E, unknown]>[1];
 };
 
-export type ErrorUnionOf<F> =
-    F extends EnrolledErrorFamily<infer _EM, infer _Es> | ErrorFamily<infer _M>
-        ? ReturnType<F[keyof F & string]>
-        : never;
-
-
-const TransformersField = Symbol("FErrorEnrollTransformers");
-
-export type EnrolledErrorFamily<M extends ErrorMap, Es extends readonly Error[] = []> =
-    (ErrorFamily<M> & {
-        readonly [TransformersField]: Map<new(...args: never[]) => Es[number], (error: Es[number]) => ErrorUnionOf<ErrorFamily<M>>>;
-        from(error: Es[number]): ErrorUnionOf<ErrorFamily<M>>;
-    });
-
-
 export type ErrorMapOf<F> =
-    F extends EnrolledErrorFamily<infer EM, infer _Es> ? EM :
-        F extends ErrorFamily<infer M>
-            ? M
-            : never;
+    F extends ErrorFamily<infer M, infer _Es>
+        ? M
+        : never;
