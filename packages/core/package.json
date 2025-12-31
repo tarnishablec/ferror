@@ -16,7 +16,7 @@
             "import": "./src/index.ts"
         }
     },
-    "dependencies": {
+    "devDependencies": {
         "hono": "^4.11.3"
     }
 }

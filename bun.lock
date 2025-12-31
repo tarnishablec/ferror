@@ -15,7 +15,7 @@
     "packages/core": {
       "name": "@thaterror/core",
       "version": "1.0.0",
-      "dependencies": {
+      "devDependencies": {
         "hono": "^4.11.3",
       },
     },

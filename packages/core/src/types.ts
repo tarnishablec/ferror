@@ -56,3 +56,7 @@ export type ErrorMapOf<F> =
     F extends ErrorFamily<infer M, infer _Es>
         ? M
         : never;
+
+export type ErrorUnionOf<F> =
+    F extends ErrorFamily<infer M, infer _Es>
+        ? ErrorUnionOfMap<M> : never

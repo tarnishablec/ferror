@@ -1,29 +1,25 @@
-import {
-    type DefinedError,
-    type ErrorCase,
-    type ErrorFamily,
-    type ErrorMap,
-    type ErrorSpec,
-    ScopeField
-} from "./types";
+import { type DefinedError, type ErrorCase, type ErrorFamily, ScopeField } from "./types";
 
-export function scopeOfFamily<M extends ErrorMap>(errorFamily: ErrorFamily<M>) {
-    return errorFamily[ScopeField];
+export interface Scoped {
+    readonly [ScopeField]: symbol;
 }
 
-export function scopeOfError<E extends DefinedError>(error: E) {
-    return error[ScopeField];
-}
+export function scopeOf<C>(target: C extends ErrorCase<infer _K, infer _S> ? C : never): symbol;
 
-export function scopeOfCase<K extends string, S extends ErrorSpec>(
-    errorCase: ErrorCase<K, S>
-) {
-    return errorCase[ScopeField];
-}
+export function scopeOf<E>(target: E extends DefinedError<infer _C, infer _P> ? E : never): symbol;
 
-export function scopeOf(target: { [ScopeField]: symbol } | DefinedError) {
-    if (typeof target === "function") return scopeOfCase(target);
-    if (target instanceof Error) return scopeOfError(target);
-    if (typeof target === "object") return scopeOfFamily(target);
-    throw new Error("Invalid target");
+export function scopeOf<F>(
+    target: F extends ErrorFamily<infer _M, infer _Es> ? F : never
+): symbol;
+
+export function scopeOf(target: Scoped | Error): symbol {
+    if (target && ScopeField in target) {
+        return (target as Scoped)[ScopeField];
+    }
+
+    if (target instanceof Error) {
+        throw new Error("This Error instance does not belong to any defined ErrorFamily.");
+    }
+
+    throw new Error("Invalid target: Not a Scoped object.");
 }
