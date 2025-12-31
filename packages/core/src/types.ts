@@ -11,6 +11,8 @@ export interface DefinedError<
     readonly [ScopeField]: symbol;
     readonly [PayloadField]: Payload;
     readonly [CodeField]: Code;
+
+    is<K extends string, S extends ErrorSpec>(errorCase: ErrorCase<K, S>): this is DefinedError<K, ExtractPayload<S>>;
 }
 
 export type ErrorSpec =
@@ -64,14 +66,28 @@ export type ErrorFamily<M extends ErrorMap, Es extends readonly (readonly [Error
     enroll<
         T extends { new(...args: never[]): Error; readonly prototype: Error },
         K extends keyof M & string,
-        C extends ErrorUnionOfMap<M>,
-        E extends Error = InstanceOfError<T>
+        U extends ErrorUnionOfMap<M>,
+        E extends InstanceOfError<T>
     >(
         errorClass: T,
-        errorCase: ErrorCase<K, M[K]> & ((...args: never[]) => C),
+        errorCase: ErrorCase<K, M[K]> & ((...args: never[]) => U),
         ...args: ExtractPayload<M[K]> extends [] | never[]
             ? []
             : [transformer: (e: E) => ExtractPayload<M[K]>]
+    ): ErrorFamily<M, Upsert<Es, E, U>>;
+
+    /**
+     * Bridges a multi-variant error class (like HTTPException) to multiple family cases.
+     * ### 🌉 POLYMORPHIC MAPPING
+     * Allows a single error class to be dispatched to different cases based on runtime properties.
+     */
+    bridge<
+        T extends { new(...args: never[]): Error; readonly prototype: Error },
+        C extends ErrorUnionOfMap<M>,
+        E extends InstanceOfError<T>,
+    >(
+        errorClass: T,
+        mapper: (e: E, cases: { [K in keyof M & string]: ErrorCase<K, M[K]> }) => C
     ): ErrorFamily<M, Upsert<Es, E, C>>;
 
     /**
@@ -138,12 +154,11 @@ type InstanceOfError<T> = T extends { readonly prototype: infer P }
 
 /**
  * Updates or inserts a type mapping into the Error Family tuple.
- * We use `Extract<Rest, ...>` to fix TS2344: ensuring the compiler recognizes
  * the recursive tail as a valid tuple array.
  */
 type Upsert<T extends readonly (readonly [Error, unknown])[], E extends Error, C> =
     T extends readonly [readonly [infer CurE, infer CurC], ...infer Rest]
-        ? CurE extends E
+        ? [E] extends [CurE]
             ? readonly [[E, C], ...Rest]
             : readonly [[CurE, CurC], ...Upsert<Extract<Rest, readonly (readonly [Error, unknown])[]>, E, C>]
         : readonly [[E, C]];

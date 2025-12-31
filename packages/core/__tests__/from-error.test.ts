@@ -3,30 +3,48 @@ import { HTTPException } from 'hono/http-exception'
 import { AppError } from './define-error.test'
 
 class MyCustomError extends Error {
-    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: <test>
-    #prop = 1;
+    prop = 1;
 }
 
 class MyCustomError2 extends Error {
-    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: <test>
-    #prop2 = 1;
+    constructor(public prop2 = 1) {
+        super();
+    }
 }
 
 describe('ErrorFamily from native error testing', () => {
     test('should chain up error family', () => {
         const ExAppError = AppError.enroll(MyCustomError, AppError.Unauthorized);
         const InferErr = ExAppError.from(new MyCustomError());
-        expect(InferErr).toBeInstanceOf(AppError.Unauthorized);
+        expect(InferErr.is(AppError.Unauthorized)).toBe(true);
 
         const ExxAppError = ExAppError.enroll(HTTPException, AppError.NotFound, (e) => [e.status]);
-        expect(ExxAppError.from(new HTTPException(404))).toBeInstanceOf(AppError.NotFound);
+        expect(ExxAppError.from(new HTTPException(404)).is(AppError.NotFound)).toBe(true);
+
 
         const ExrAppError = ExxAppError
-            .enroll(MyCustomError, AppError.NotFound, (_e) => [1])
+            .enroll(MyCustomError, AppError.NotFound, (e) => [e.prop])
             .enroll(SyntaxError, AppError.ShardError, (_e) => [2, 'xx']);
-        expect(ExrAppError.from(new HTTPException(404))).toBeInstanceOf(AppError.NotFound);
+
+        expect(ExrAppError.from(new MyCustomError()).is(AppError.NotFound)).toBe(true)
 
         // @ts-expect-error
-        expect(ExrAppError.from(new MyCustomError2())).toBeInstanceOf(AppError.ShardError);
+        ExrAppError.from(new MyCustomError2())
+    })
+
+    test('should bridge error correctly', () => {
+        const httpError = AppError.bridge(HTTPException, (e, cases) => {
+            return e.status === 404
+                ? cases.NotFound(Number(e.message) || 0)
+                : e.status === 401
+                    ? cases.Unauthorized()
+                    : e.status === 500
+                        ? cases.DatabaseError(e.message)
+                        : cases.ShardError(0, "FORBIDDEN_SHARD")
+
+        })
+
+        const nfErr = httpError.from(new HTTPException(404))
+        expect(nfErr.is(AppError.NotFound)).toBe(true);
     })
 })

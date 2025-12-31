@@ -2,8 +2,11 @@ import {
     CodeField,
     type DefinedError,
     ErrorBrand,
+    type ErrorCase,
     type ErrorFamily,
     type ErrorMap,
+    type ErrorSpec,
+    type ExtractPayload,
     PayloadField,
     ScopeField
 } from "./types";
@@ -29,6 +32,10 @@ class InternalBaseError<const Code extends string, const Payloads extends readon
         this[PayloadField] = args;
 
         Error.captureStackTrace(this, this.constructor);
+    }
+
+    is<K extends string, S extends ErrorSpec>(errorCase: ErrorCase<K, S>): this is DefinedError<K, ExtractPayload<S>> {
+        return this[CodeField] as unknown === errorCase[CodeField];
     }
 }
 

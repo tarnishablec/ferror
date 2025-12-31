@@ -4,7 +4,6 @@ import {
     defineError,
     ErrorBrand,
     type ErrorUnionOf,
-    is,
     isDefinedError,
     PayloadField,
     ScopeField,
@@ -101,11 +100,11 @@ describe("defineError strict type testing", () => {
             const isError = e instanceof Error;
             expect(isError).toBe(true);
 
-            const isDBError = is(e, AppError.DatabaseError);
+            const isDBError = err.is(AppError.DatabaseError);
             expect(isDBError).toBe(true);
 
-            if (isDBError) {
-                expect(e[CodeField]).toBe("DatabaseError");
+            if (isDBError && isError) {
+                expect(Reflect.get(e, CodeField)).toBe("DatabaseError");
             }
         }
     });
