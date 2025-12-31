@@ -23,7 +23,12 @@
         "noUnusedParameters": false,
         "noPropertyAccessFromIndexSignature": false,
         "strictFunctionTypes": true,
-        "useDefineForClassFields": true
+        "useDefineForClassFields": true,
+        "paths": {
+            "@thaterror/*": [
+                "packages/*/src"
+            ]
+        }
     },
     "include": [
         "packages/**/*.ts"

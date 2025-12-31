@@ -5,7 +5,7 @@
     "main": "src/index.ts",
     "type": "module",
     "scripts": {
-        "test": "bun test"
+        "test": "bun test --coverage --coverage-reporter=text --coverage-reporter=lcov --coverage-skip-test-files"
     },
     "repository": {
         "type": "git",
