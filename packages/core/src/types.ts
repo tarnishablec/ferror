@@ -40,11 +40,7 @@ export type ErrorCase<K extends string, S extends ErrorSpec> =
         : (options?: ErrorOptions) => DefinedError<K, never[]>)
     & { readonly [CodeField]: K; readonly [ScopeField]: symbol };
 
-export type ErrorFamily<M extends ErrorMap, Es extends readonly (readonly [Error, ErrorUnionOfMap<M>])[] = []> = {
-    readonly [K in keyof M & string]: ErrorCase<K, M[K]>;
-} & {
-    readonly [ScopeField]: symbol;
-} & {
+export interface ErrorFamilyOperator<M extends ErrorMap, Es extends readonly (readonly [Error, ErrorUnionOfMap<M>])[] = []> {
     /**
      * Registers an Error class into the family mapping it to a specific variant.
      * ### 🧬 TYPE CAPTURE
@@ -127,7 +123,13 @@ export type ErrorFamily<M extends ErrorMap, Es extends readonly (readonly [Error
                 : { __STATUS__: "TYPE_NOT_ENROLLED"; message: "Type structure not found in family" }
             )
     ): Extract<Es[number], readonly [E, unknown]>[1];
-};
+}
+
+export type ErrorFamily<M extends ErrorMap, Es extends readonly (readonly [Error, ErrorUnionOfMap<M>])[] = []> = {
+    readonly [K in keyof M & string]: ErrorCase<K, M[K]>;
+} & {
+    readonly [ScopeField]: symbol;
+} & ErrorFamilyOperator<M, Es>;
 
 /**
  * Extracts the specific instance type from an Error constructor.
@@ -148,7 +150,7 @@ export type ErrorFamily<M extends ErrorMap, Es extends readonly (readonly [Error
  * interface, ensuring that subtype-specific properties (e.g., SyntaxError.lineNumber)
  * are preserved in the transformer.
  */
-type InstanceOfError<T> = T extends { readonly prototype: infer P }
+export type InstanceOfError<T> = T extends { readonly prototype: infer P }
     ? P extends Error ? P : Error
     : Error;
 
@@ -156,7 +158,7 @@ type InstanceOfError<T> = T extends { readonly prototype: infer P }
  * Updates or inserts a type mapping into the Error Family tuple.
  * the recursive tail as a valid tuple array.
  */
-type Upsert<T extends readonly (readonly [Error, unknown])[], E extends Error, C> =
+export type Upsert<T extends readonly (readonly [Error, unknown])[], E extends Error, C> =
     T extends readonly [readonly [infer CurE, infer CurC], ...infer Rest]
         ? [E] extends [CurE]
             ? readonly [[E, C], ...Rest]

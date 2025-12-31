@@ -1,3 +1,4 @@
+import { createFamilyInstance } from "./family.ts";
 import {
     CodeField,
     type DefinedError,
@@ -6,6 +7,7 @@ import {
     type ErrorFamily,
     type ErrorMap,
     type ErrorSpec,
+    type ErrorUnionOfMap,
     type ExtractPayload,
     PayloadField,
     ScopeField
@@ -42,41 +44,41 @@ class InternalBaseError<const Code extends string, const Payloads extends readon
 export function defineError<const M extends ErrorMap>(
     map: M
 ): ErrorFamily<M> {
-    const result = {} as Record<string, unknown>;
-    const scope = Symbol();
+    const scope = Symbol("ErrorFamilyScope");
+    const cases: Record<string, (...args: unknown[]) => ErrorUnionOfMap<M>> = {};
 
     for (const key in map) {
         const spec = map[key];
 
-        const factory = (...args: unknown[]) => {
-            let finalArgs = args;
+        const factory = (...args: unknown[]): ErrorUnionOfMap<M> => {
+            let finalArgs: unknown[] = args;
             let options: ErrorOptions | undefined;
 
             if (typeof spec === "function") {
                 if (args.length > spec.length) {
                     const lastArg = args[args.length - 1];
-                    if (typeof lastArg === "object" && lastArg !== null) {
+                    if (lastArg !== null && typeof lastArg === "object" && !Array.isArray(lastArg)) {
                         options = lastArg as ErrorOptions;
                         finalArgs = args.slice(0, -1);
                     }
                 }
-
-                const message = (spec as (...args: unknown[]) => string)(...finalArgs);
-                return new InternalBaseError(key, finalArgs, scope, message, options);
+                const message = (spec as (...a: unknown[]) => string)(...finalArgs);
+                return new InternalBaseError(key, finalArgs, scope, message, options) as unknown as ErrorUnionOfMap<M>;
             }
 
             if (typeof spec === "string") {
                 options = args[0] as ErrorOptions | undefined;
-                return new InternalBaseError(key, [], scope, spec, options);
+                return new InternalBaseError(key, [], scope, spec, options) as unknown as ErrorUnionOfMap<M>;
             }
+
+            throw new Error("Invalid ErrorSpec");
         };
 
         Reflect.set(factory, CodeField, key);
         Reflect.set(factory, ScopeField, scope);
 
-        result[key] = factory;
+        cases[key] = factory;
     }
 
-    Reflect.set(result, ScopeField, scope);
-    return result as ErrorFamily<M>;
+    return createFamilyInstance<M, []>(cases, scope, []);
 }
