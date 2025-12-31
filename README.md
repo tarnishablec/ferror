@@ -1,5 +1,8 @@
 # thaterror 🛡️
 
+[![npm version](https://img.shields.io/npm/v/@thaterror/core.svg)](https://www.npmjs.com/package/@thaterror/core)
+[![Bun Checked](https://img.shields.io/badge/Bun-checked-blue?logo=bun&logoColor=white)](https://bun.sh)
+
 A type-safe error handling library for TypeScript, heavily inspired by the experience of Rust's [thiserror](https://github.com/dtolnay/thiserror). It aims to remove the boilerplate while providing a seamless, domain-driven error management workflow.
 
 ## The Core Value
@@ -30,46 +33,37 @@ npm install @thaterror/core
 
 ## 🚀 Quick Start
 
-### 1. Define an Error Family
+The best practice is to centralize your error definitions in a file (e.g., `errors.ts`), configure external error mappings using `enroll`, and export the resulting family.
 
-Define your error schema using `defineError`.
+### 1. Define and Configure (`errors.ts`)
 
 ```typescript
-import { defineError } from "@thaterror/core";
+// errors.ts
+import {defineError} from "@thaterror/core";
 
-export const AppError = defineError({
-  // Static message
-  Unauthorized: "You are not logged in",
-  
-  // Dynamic message (with Payload)
-  NotFound: (id: number) => `Resource ${id} not found`,
-  
-  // Multiple Payload parameters
-  DatabaseError: (query: string, timeout: number) => 
-    `Query failed: ${query} (timeout: ${timeout}ms)`,
+const BaseError = defineError({
+    // Static message
+    Unauthorized: "You are not logged in",
+
+    // Dynamic message (with Payload)
+    NotFound: (id: number) => `Resource ${id} not found`,
 });
+
+// Configure and export the family
+export const AppError = BaseError
+    .enroll(/** your external errors */)
+    .enroll(/** ... */)
+    .bridge(/** ... */)
 ```
 
 ### 2. Throw and Catch
 
 ```typescript
-import { isDefinedError, PayloadField } from "@thaterror/core";
+import { isDefinedError } from "@thaterror/core";
+import { AppErrors } from "./errors";
 
 // Throwing
 throw AppError.NotFound(404);
-
-// Catching and checking
-try {
-  // ...
-} catch (e: unknown) {
-  // Use the .is() method for precise type narrowing
-  if (isDefinedError(e) && e.is(AppError.NotFound)) {
-    // e is now automatically narrowed
-    // e[PayloadField] is inferred as [number]
-    console.log(e.message); // "Resource 404 not found"
-    const [id] = e[PayloadField]; // id is number
-  }
-}
 ```
 
 ## 🛠️ Advanced: Adopting External Errors
