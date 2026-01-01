@@ -21,7 +21,7 @@ on:
             publish:
                 description: 'Where to publish: "both" (default) = npmjs.org and GitHub Packages, "npmjs" = npmjs.org only, "github" = GitHub Packages only'
                 required: false
-                default: 'both'
+                default: 'npmjs'
                 type: choice
                 options:
                     - both
