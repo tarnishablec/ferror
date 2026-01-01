@@ -13,7 +13,7 @@ on:
                     - minor
                     - patch
             package:
-                description: 'Which package to publish (name under packages/). Use "all" to publish all packages. Default: core'
+                description: 'Which package(s) to publish (name(s) under packages/). Use "all" to publish all packages. To publish multiple packages at once, separate names with commas (e.g. "core,cli,utils"). Default: core'
                 required: false
                 default: 'core'
                 type: string
@@ -26,120 +26,131 @@ jobs:
     bump-and-publish:
         runs-on: ubuntu-latest
         steps:
-            - name: Checkout
-              uses: actions/checkout@v6
-              with:
-                  fetch-depth: 0
-                  persist-credentials: true
+            -   name: Checkout
+                uses: actions/checkout@v6
+                with:
+                    fetch-depth: 0
+                    persist-credentials: true
 
-            - name: Setup bun
-              uses: oven-sh/setup-bun@v2
-              with:
-                  bun-version: 'latest'
+            -   name: Setup bun
+                uses: oven-sh/setup-bun@v2
+                with:
+                    bun-version: 'latest'
 
-            - name: Show bun versions
-              run: |
-                  bun --version || true
+            -   name: Show bun versions
+                run: |
+                    bun --version || true
 
-            - name: Validate root package.json exists
-              run: |
-                  if [ ! -f package.json ]; then
-                    echo "Root package.json not found"
-                    exit 1
-                  fi
-
-            - name: Determine current version and bump
-              id: bump
-              run: |
-                  set -euo pipefail
-                  
-                  # Read the workflow input (expanded by GH). Use shell default if empty/null.
-                  BUMP_TYPE="${{ github.event.inputs.bump }}"
-                  if [ -z "${BUMP_TYPE}" ] || [ "${BUMP_TYPE}" = "null" ]; then
-                    BUMP_TYPE="patch"
-                  fi
-                  echo "Requested bump type: $BUMP_TYPE"
-                  
-                  # Use bun's version command to bump root package.json (no git tag)
-                  if command -v bun >/dev/null 2>&1; then
-                    bun pm version "$BUMP_TYPE" --no-git-tag-version
-                  else
-                    echo "bun not found in runner; aborting"
-                    exit 1
-                  fi
-                  
-                  # Read the new version from root package.json
-                  NEW=$(jq -r .version package.json)
-                  if [ -z "$NEW" ] || [ "$NEW" = "null" ]; then
-                    echo "Failed to read new version from package.json"
-                    exit 1
-                  fi
-                  
-                  echo "Bumped version: $NEW"
-                  echo "BUMP_TYPE=$BUMP_TYPE" >> $GITHUB_ENV
-                  echo "NEW_VERSION=$NEW" >> $GITHUB_ENV
-
-            - name: Propagate new version to all packages/*/package.json
-              run: |
-                  set -euo pipefail
-                  echo "Propagating version $NEW_VERSION to packages/*/package.json"
-                  for P in packages/*; do
-                    if [ -f "$P/package.json" ]; then
-                      jq --arg v "$NEW_VERSION" '.version = $v' "$P/package.json" > "$P/package.json.tmp"
-                      mv "$P/package.json.tmp" "$P/package.json"
-                      echo "Updated $P/package.json -> $(jq -r .version "$P/package.json")"
-                    fi
-                  done
-
-            - name: 'Commit and push version changes (scheme B: normal push, fallback to --force-with-lease)'
-              env:
-                  GIT_AUTHOR_NAME: github-actions
-                  GIT_AUTHOR_EMAIL: github-actions@users.noreply.github.com
-              run: |
-                  set -euo pipefail
-                  git config user.name "${GIT_AUTHOR_NAME}"
-                  git config user.email "${GIT_AUTHOR_EMAIL}"
-                  
-                  if git status --porcelain | grep -q . ; then
-                    BRANCH="bump-version/${NEW_VERSION}"
-                    echo "Preparing branch $BRANCH and committing changes"
-                    # create or reset local branch to current HEAD
-                    git checkout -B "$BRANCH"
-                    git add package.json || true
-                    git add packages/*/package.json || true
-                    # commit if there are staged changes; ignore if nothing to commit
-                    git commit -m "chore(release): bump version to ${NEW_VERSION} [skip ci]" || true
-                  
-                    # Try regular push first; if rejected, use safer force-with-lease
-                    if git push --set-upstream origin "$BRANCH"; then
-                      echo "Pushed version bump to origin/$BRANCH"
-                    else
-                      echo "Normal push failed, attempting force-with-lease"
-                      # fetch remote branch to make lease checks accurate (safe)
-                      git fetch origin "$BRANCH" || true
-                      git push --force-with-lease origin "$BRANCH"
-                      echo "Force-with-lease pushed version bump to origin/$BRANCH"
-                    fi
-                  
-                    echo "PUSHED_BRANCH=$BRANCH" >> $GITHUB_ENV
-                  else
-                    echo "No changes to commit"
-                  fi
-
-            - name: Validate target package(s) presence
-              run: |
-                  set -euo pipefail
-                  PKG_INPUT="${{ github.event.inputs.package }}"
-                  if [ -z "${PKG_INPUT}" ] || [ "${PKG_INPUT}" = "null" ]; then
-                    PKG_INPUT="core"
-                  fi
-                  echo "Requested package to publish: ${PKG_INPUT}"
-                  if [ "${PKG_INPUT}" != "all" ]; then
-                    if [ ! -d "packages/${PKG_INPUT}" ]; then
-                      echo "Error: target package directory packages/${PKG_INPUT} not found"
+            -   name: Validate root package.json exists
+                run: |
+                    if [ ! -f package.json ]; then
+                      echo "Root package.json not found"
                       exit 1
                     fi
-                  fi
+
+            -   name: Determine current version and bump
+                id: bump
+                run: |
+                    set -euo pipefail
+                    
+                    # Read the workflow input (expanded by GH). Use shell default if empty/null.
+                    BUMP_TYPE="${{ github.event.inputs.bump }}"
+                    if [ -z "${BUMP_TYPE}" ] || [ "${BUMP_TYPE}" = "null" ]; then
+                      BUMP_TYPE="patch"
+                    fi
+                    echo "Requested bump type: $BUMP_TYPE"
+                    
+                    # Use bun's version command to bump root package.json (no git tag)
+                    if command -v bun >/dev/null 2>&1; then
+                      bun pm version "$BUMP_TYPE" --no-git-tag-version
+                    else
+                      echo "bun not found in runner; aborting"
+                      exit 1
+                    fi
+                    
+                    # Read the new version from root package.json
+                    NEW=$(jq -r .version package.json)
+                    if [ -z "$NEW" ] || [ "$NEW" = "null" ]; then
+                      echo "Failed to read new version from package.json"
+                      exit 1
+                    fi
+                    
+                    echo "Bumped version: $NEW"
+                    echo "BUMP_TYPE=$BUMP_TYPE" >> $GITHUB_ENV
+                    echo "NEW_VERSION=$NEW" >> $GITHUB_ENV
+
+            -   name: Propagate new version to all packages/*/package.json
+                run: |
+                    set -euo pipefail
+                    echo "Propagating version $NEW_VERSION to packages/*/package.json"
+                    for P in packages/*; do
+                      if [ -f "$P/package.json" ]; then
+                        jq --arg v "$NEW_VERSION" '.version = $v' "$P/package.json" > "$P/package.json.tmp"
+                        mv "$P/package.json.tmp" "$P/package.json"
+                        echo "Updated $P/package.json -> $(jq -r .version "$P/package.json")"
+                      fi
+                    done
+
+            -   name: 'Commit and push version changes (scheme B: normal push, fallback to --force-with-lease)'
+                env:
+                    GIT_AUTHOR_NAME: github-actions
+                    GIT_AUTHOR_EMAIL: github-actions@users.noreply.github.com
+                run: |
+                    set -euo pipefail
+                    git config user.name "${GIT_AUTHOR_NAME}"
+                    git config user.email "${GIT_AUTHOR_EMAIL}"
+                    
+                    if git status --porcelain | grep -q . ; then
+                      BRANCH="bump-version/${NEW_VERSION}"
+                      echo "Preparing branch $BRANCH and committing changes"
+                      # create or reset local branch to current HEAD
+                      git checkout -B "$BRANCH"
+                      git add package.json || true
+                      git add packages/*/package.json || true
+                      # commit if there are staged changes; ignore if nothing to commit
+                      git commit -m "chore(release): bump version to ${NEW_VERSION} [skip ci]" || true
+                    
+                      # Try regular push first; if rejected, use safer force-with-lease
+                      if git push --set-upstream origin "$BRANCH"; then
+                        echo "Pushed version bump to origin/$BRANCH"
+                      else
+                        echo "Normal push failed, attempting force-with-lease"
+                        # fetch remote branch to make lease checks accurate (safe)
+                        git fetch origin "$BRANCH" || true
+                        git push --force-with-lease origin "$BRANCH"
+                        echo "Force-with-lease pushed version bump to origin/$BRANCH"
+                      fi
+                    
+                      echo "PUSHED_BRANCH=$BRANCH" >> $GITHUB_ENV
+                    else
+                      echo "No changes to commit"
+                    fi
+
+            -   name: Validate target package(s) presence
+                run: |
+                    set -euo pipefail
+                    PKG_INPUT="${{ github.event.inputs.package }}"
+                    if [ -z "${PKG_INPUT}" ] || [ "${PKG_INPUT}" = "null" ]; then
+                      PKG_INPUT="core"
+                    fi
+                    echo "Requested package to publish: ${PKG_INPUT}"
+                    
+                    if [ "${PKG_INPUT}" != "all" ]; then
+                      # support multiple package names separated by ','
+                      IFS=',' read -ra PKGS <<< "$PKG_INPUT"
+                      for PKG in "${PKGS[@]}"; do
+                        # trim whitespace
+                        PKG="$(printf '%s' "${PKG}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+                        if [ -z "${PKG}" ]; then
+                          echo "Warning: empty package name segment in input; skipping"
+                          continue
+                        fi
+                        if [ ! -d "packages/${PKG}" ]; then
+                          echo "Error: target package directory packages/${PKG} not found"
+                          exit 1
+                        fi
+                      done
+                    fi
 
             -   name: Configure npm for npmjs.org (for bun publish auth)
                 env:
@@ -159,51 +170,61 @@ jobs:
                     grep -v '_authToken' ~/.npmrc || true
                     echo "---- end ----"
 
-            - name: Publish selected package(s) with bun (fallback to npm if needed)
-              env:
-                  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-              run: |
-                  set -euo pipefail
-                  
-                  PKG_INPUT="${{ github.event.inputs.package }}"
-                  if [ -z "${PKG_INPUT}" ] || [ "${PKG_INPUT}" = "null" ]; then
-                    PKG_INPUT="core"
-                  fi
-                  
-                  publish_dir() {
-                    D="$1"
-                    if [ ! -f "$D/package.json" ]; then
-                      echo "Skipping $D: package.json not found"
-                      return 1
+            -   name: Publish selected package(s) with bun (fallback to npm if needed)
+                env:
+                    NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+                run: |
+                    set -euo pipefail
+                    
+                    PKG_INPUT="${{ github.event.inputs.package }}"
+                    if [ -z "${PKG_INPUT}" ] || [ "${PKG_INPUT}" = "null" ]; then
+                      PKG_INPUT="core"
                     fi
-                    if jq -e '.private == true' "$D/package.json" >/dev/null 2>&1; then
-                      echo "Skipping $D: marked private"
-                      return 0
-                    fi
-                    pushd "$D" >/dev/null
-                    NAME=$(jq -r .name package.json)
-                    VER=$(jq -r .version package.json)
-                    echo "Publishing $NAME@$VER from $D to npmjs.org"
-                    if command -v bun >/dev/null 2>&1 ; then
-                      bun publish --registry=https://registry.npmjs.org || {
-                        echo "bun publish failed for $D; attempting npm publish fallback"
-                        npm publish --registry=https://registry.npmjs.org
-                      }
-                    else
-                      echo "bun not found; using npm publish"
-                      npm publish --registry=https://registry.npmjs.org
-                    fi
-                    popd >/dev/null
-                  }
-                  
-                  if [ "${PKG_INPUT}" = "all" ]; then
-                    echo "Publishing all packages under packages/*"
-                    for D in packages/*; do
-                      if [ -d "$D" ]; then
-                        publish_dir "$D" || true
+                    
+                    publish_dir() {
+                      D="$1"
+                      if [ ! -f "$D/package.json" ]; then
+                        echo "Skipping $D: package.json not found"
+                        return 1
                       fi
-                    done
-                  else
-                    TARGET="packages/${PKG_INPUT}"
-                    publish_dir "${TARGET}"
-                  fi
+                      if jq -e '.private == true' "$D/package.json" >/dev/null 2>&1; then
+                        echo "Skipping $D: marked private"
+                        return 0
+                      fi
+                      pushd "$D" >/dev/null
+                      NAME=$(jq -r .name package.json)
+                      VER=$(jq -r .version package.json)
+                      echo "Publishing $NAME@$VER from $D to npmjs.org"
+                      if command -v bun >/dev/null 2>&1 ; then
+                        bun publish --registry=https://registry.npmjs.org || {
+                          echo "bun publish failed for $D; attempting npm publish fallback"
+                          npm publish --registry=https://registry.npmjs.org
+                        }
+                      else
+                        echo "bun not found; using npm publish"
+                        npm publish --registry=https://registry.npmjs.org
+                      fi
+                      popd >/dev/null
+                    }
+                    
+                    if [ "${PKG_INPUT}" = "all" ]; then
+                      echo "Publishing all packages under packages/*"
+                      for D in packages/*; do
+                        if [ -d "$D" ]; then
+                          publish_dir "$D" || true
+                        fi
+                      done
+                    else
+                      # Support multiple package names separated by ','
+                      IFS=',' read -ra PKGS <<< "$PKG_INPUT"
+                      for PKG in "${PKGS[@]}"; do
+                        # trim whitespace
+                        PKG="$(printf '%s' "${PKG}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+                        if [ -z "${PKG}" ]; then
+                          echo "Warning: empty package name segment in input; skipping"
+                          continue
+                        fi
+                        TARGET="packages/${PKG}"
+                        publish_dir "${TARGET}" || true
+                      done
+                    fi
