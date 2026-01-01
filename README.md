@@ -29,7 +29,7 @@ handling.
 
 ## ✨ Features
 
-- **🎯 Zero Boilerplate**: A single `defineError` call generates error factories with built-in type guards and payload
+- **🎯 Zero Boilerplate**: A single `That` call generates error factories with built-in type guards and payload
   support.
 - **🏗️ Domain-Driven**: Define error families that encapsulate your business logic.
 - **🌉 Native Integration**: "Naturalize" external errors into your family using `enroll` and `bridge`.
@@ -57,19 +57,17 @@ mappings using `enroll`, and export the resulting family.
 // errors.ts
 import {That} from "@thaterror/core";
 
-const BaseError = That({
+export const AppError = That({
     // Static message
     Unauthorized: "You are not logged in",
 
     // Dynamic message (with Payload)
     NotFound: (id: number) => `Resource ${id} not found`,
-});
 
-// Configure and export the family
-export const AppError = BaseError
-    .enroll(/** your external errors */)
-    .enroll(/** ... */)
-    .bridge(/** ... */)
+    DatabaseError: (query: string) => `Database Error: ${query}`
+}).enroll(/** your external errors */)
+  .enroll(/** ... */)
+  .bridge(/** ... */)
 ```
 
 ### 2. Throw and Catch
@@ -100,10 +98,10 @@ class MyLegacyError extends Error {
 }
 
 // Enroll MyLegacyError as AppError.NotFound, extracting legacyId as the payload
-const MyFamily = AppError.enroll(MyLegacyError, AppError.NotFound, (e) => [Number(e.legacyId)]);
+const ExAppError = AppError.enroll(MyLegacyError, AppError.NotFound, (e) => [Number(e.legacyId)]);
 
 // Now, MyFamily.from can recognize and transform MyLegacyError instances
-const err = MyFamily.from(new MyLegacyError("123"));
+const err = ExAppError.from(new MyLegacyError("123"));
 // err is now typed as AppError.NotFound
 ```
 
@@ -114,14 +112,14 @@ Allows logic-based dispatching of a complex error class (like `HTTPException`) t
 ```typescript
 import {HTTPException} from 'hono/http-exception';
 
-const MyFamily = AppError.bridge(HTTPException, (e, cases) => {
+const ExAppError = AppError.bridge(HTTPException, (e, cases) => {
     switch (e.status) {
         case 404:
             return cases.NotFound(0);
         case 401:
             return cases.Unauthorized();
         default:
-            return cases.DatabaseError(e.message, 0);
+            return cases.DatabaseError(e.message);
     }
 });
 ```
