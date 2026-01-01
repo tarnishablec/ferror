@@ -41,7 +41,7 @@ class InternalBaseError<const Code extends string, const Payloads extends readon
     }
 }
 
-export function defineError<const M extends ErrorMap>(
+export function That<const M extends ErrorMap>(
     map: M
 ): ErrorFamily<M> {
     const scope = Symbol("ErrorFamilyScope");

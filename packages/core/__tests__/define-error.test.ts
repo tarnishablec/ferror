@@ -1,16 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import {
     CodeField,
-    defineError,
     ErrorBrand,
     type ErrorUnionOf,
     isDefinedError,
     PayloadField,
     ScopeField,
-    scopeOf
+    scopeOf,
+    That
 } from "@thaterror/core"
 
-export const AppError = defineError({
+export const AppError = That({
     NotFound: (id: number) => `Resource ${id} not found`,
     Unauthorized: "User is not logged in",
     DatabaseError: (query: string) => `Query failed: ${query}`,

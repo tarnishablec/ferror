@@ -1,4 +1,4 @@
-export { defineError } from './define'
+export { That } from './define'
 export { isDefinedError } from './is'
 export { scopeOf } from './of'
 

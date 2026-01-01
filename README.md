@@ -40,9 +40,9 @@ The best practice is to centralize your error definitions in a file (e.g., `erro
 
 ```typescript
 // errors.ts
-import {defineError} from "@thaterror/core";
+import {That} from "@thaterror/core";
 
-const BaseError = defineError({
+const BaseError = That({
     // Static message
     Unauthorized: "You are not logged in",
 
@@ -60,8 +60,7 @@ export const AppError = BaseError
 ### 2. Throw and Catch
 
 ```typescript
-import { isDefinedError } from "@thaterror/core";
-import { AppErrors } from "./errors";
+import {AppErrors} from "./errors";
 
 // Throwing
 throw AppError.NotFound(404);
@@ -76,17 +75,19 @@ This is where `thaterror` shines—bringing external error classes into your typ
 Maps a specific error class directly to a family case. If the case requires a payload, a transformer function must be provided.
 
 ```typescript
-import { AppError } from "./errors";
+import {AppError} from "./errors";
 
 class MyLegacyError extends Error {
-    constructor(public legacyId: string) { super(); }
+    constructor(public legacyId: string) {
+        super();
+    }
 }
 
 // Enroll MyLegacyError as AppError.NotFound, extracting legacyId as the payload
 const MyFamily = AppError.enroll(MyLegacyError, AppError.NotFound, (e) => [Number(e.legacyId)]);
 
 // Now, MyFamily.from can recognize and transform MyLegacyError instances
-const err = MyFamily.from(new MyLegacyError("123")); 
+const err = MyFamily.from(new MyLegacyError("123"));
 // err is now typed as AppError.NotFound
 ```
 
@@ -95,14 +96,17 @@ const err = MyFamily.from(new MyLegacyError("123"));
 Allows logic-based dispatching of a complex error class (like `HTTPException`) to multiple family cases.
 
 ```typescript
-import { HTTPException } from 'hono/http-exception';
+import {HTTPException} from 'hono/http-exception';
 
 const MyFamily = AppError.bridge(HTTPException, (e, cases) => {
-  switch (e.status) {
-    case 404: return cases.NotFound(0);
-    case 401: return cases.Unauthorized();
-    default: return cases.DatabaseError(e.message, 0);
-  }
+    switch (e.status) {
+        case 404:
+            return cases.NotFound(0);
+        case 401:
+            return cases.Unauthorized();
+        default:
+            return cases.DatabaseError(e.message, 0);
+    }
 });
 ```
 
@@ -112,16 +116,16 @@ const MyFamily = AppError.bridge(HTTPException, (e, cases) => {
 
 ```typescript
 try {
-  // ...
+    // ...
 } catch (e: unknown) {
-  if (e instanceof Error) {
-    // If 'e' might be an unregistered error class, TS will alert you here
-    const error = MyFamily.from(e);
-    
-    if (error.is(AppError.NotFound)) {
-        // ...
+    if (e instanceof Error) {
+        // If 'e' might be an unregistered error class, TS will alert you here
+        const error = MyFamily.from(e);
+
+        if (error.is(AppError.NotFound)) {
+            // ...
+        }
     }
-  }
 }
 ```
 
