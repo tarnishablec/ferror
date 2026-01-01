@@ -121,7 +121,7 @@ jobs:
                       # --auto: waits for status checks to pass before merging
                       # --squash: combines commits into one
                       # --delete-branch: cleans up the feature branch
-                      gh pr merge "$PR_URL" --auto --squash --delete-branch
+                      gh pr merge "$PR_URL" --squash --delete-branch
                       echo "PR set to auto-merge."
                     fi
 
