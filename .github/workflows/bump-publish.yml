@@ -4,7 +4,7 @@ on:
     workflow_dispatch:
         inputs:
             bump:
-                description: 'Which semver part to bump.  Use "none" to skip bumping and publish the current version as-is.'
+                description: 'Which semver part to bump'
                 required: false
                 default: 'patch'
                 type: choice
@@ -14,12 +14,12 @@ on:
                     - patch
                     - none
             package:
-                description: 'Which package(s) to publish (names under packages/). Use "all" to publish all packages.  For multiple packages separate with commas, e.g. core,cli'
+                description: 'Package names (comma separated) or "all"'
                 required: false
                 default: 'core'
                 type: string
             publish:
-                description: 'Where to publish:  "both" (default) = npmjs. org and GitHub Packages, "npmjs" = npmjs.org only, "github" = GitHub Packages only'
+                description: 'Publish destination'
                 required: false
                 default: 'npmjs'
                 type: choice
@@ -28,13 +28,13 @@ on:
                     - npmjs
                     - github(deprecated)
             auto_merge:
-                description: 'Whether to automatically merge the created bump PR into the default branch (may fail if branch protection/required checks exist).'
+                description: 'Auto-merge the created PR'
                 required: false
                 default: true
                 type: boolean
 
 permissions:
-    contents: write    # for committing & pushing version changes and creating PRs
+    contents: write
     packages: write
     pull-requests: write
 
@@ -42,383 +42,145 @@ jobs:
     bump-and-publish:
         runs-on: ubuntu-latest
         steps:
-            -   name: Checkout
-                uses: actions/checkout@v6
+            -   name: Checkout repository
+                uses: actions/checkout@v4
                 with:
                     fetch-depth: 0
                     persist-credentials: true
 
-            -   name: Setup bun
+            -   name: Setup Bun environment
                 uses: oven-sh/setup-bun@v2
                 with:
                     bun-version: 'latest'
 
-            -   name: Show bun versions
-                run: |
-                    bun --version || true
-
-            -   name: Validate root package. json exists
-                run: |
-                    if [ !  -f package.json ]; then
-                      echo "Root package.json not found"
-                      exit 1
-                    fi
-
-            -   name: Determine current version and bump (or skip)
+            -   name: Determine version and bump
                 id: bump
                 run: |
                     set -euo pipefail
-                    
                     BUMP_TYPE="${{ github.event.inputs.bump }}"
-                    if [ -z "${BUMP_TYPE}" ] || [ "${BUMP_TYPE}" = "null" ]; then
-                      BUMP_TYPE="patch"
-                    fi
-                    echo "Requested bump type: $BUMP_TYPE"
                     
                     if [ "$BUMP_TYPE" = "none" ]; then
-                      NEW=$(jq -r .version package.json)
-                      if [ -z "$NEW" ] || [ "$NEW" = "null" ]; then
-                        echo "Failed to read current version from package.json"
-                        exit 1
-                      fi
-                      echo "Skipping bump.  Using current version: $NEW"
+                      NEW_VER=$(jq -r .version package.json)
+                      echo "Skipping version bump. Current: $NEW_VER"
                     else
-                      if command -v bun >/dev/null 2>&1; then
-                        bun pm version "$BUMP_TYPE" --no-git-tag-version
-                      else
-                        echo "bun not found in runner; aborting"
-                        exit 1
-                      fi
-                    
-                      NEW=$(jq -r .version package.json)
-                      if [ -z "$NEW" ] || [ "$NEW" = "null" ]; then
-                        echo "Failed to read new version from package.json"
-                        exit 1
-                      fi
-                      echo "Bumped version:  $NEW"
+                      # Use bun to bump version without creating git tags
+                      bun pm version "$BUMP_TYPE" --no-git-tag-version
+                      NEW_VER=$(jq -r .version package.json)
+                      echo "Bumped to new version: $NEW_VER"
                     fi
                     
                     echo "BUMP_TYPE=$BUMP_TYPE" >> $GITHUB_ENV
-                    echo "NEW_VERSION=$NEW" >> $GITHUB_ENV
+                    echo "NEW_VERSION=$NEW_VER" >> $GITHUB_ENV
 
-            -   name: Propagate new version to all packages/*/package.json
+            -   name: Propagate version to sub-packages
                 run: |
                     set -euo pipefail
-                    echo "Propagating version $NEW_VERSION to packages/*/package.json"
+                    # Update version in all workspace packages
                     for P in packages/*; do
                       if [ -f "$P/package.json" ]; then
-                        OLD=$(jq -r .version "$P/package.json" || echo "")
-                        if [ "$OLD" != "$NEW_VERSION" ]; then
-                          jq --arg v "$NEW_VERSION" '.version = $v' "$P/package.json" > "$P/package.json.tmp"
-                          mv "$P/package.json.tmp" "$P/package.json"
-                          echo "Updated $P/package.json -> $(jq -r .version "$P/package.json")"
-                        else
-                          echo "No change for $P/package.json (already $NEW_VERSION)"
-                        fi
+                        jq --arg v "$NEW_VERSION" '.version = $v' "$P/package.json" > "$P/package.json.tmp"
+                        mv "$P/package.json.tmp" "$P/package.json"
+                        echo "Updated $P/package.json to $NEW_VERSION"
                       fi
                     done
 
-            -   name: 'Commit and push version changes (normal push, fallback to --force-with-lease)'
-                if: env. BUMP_TYPE != 'none'
-                env:
-                    GIT_AUTHOR_NAME: github-actions
-                    GIT_AUTHOR_EMAIL: github-actions@users.noreply.github.com
+            -   name: Commit and push changes
+                if: env.BUMP_TYPE != 'none'
                 run: |
                     set -euo pipefail
-                    git config user.name "${GIT_AUTHOR_NAME}"
-                    git config user.email "${GIT_AUTHOR_EMAIL}"
+                    git config user.name "github-actions[bot]"
+                    git config user.email "github-actions[bot]@users.noreply.github.com"
                     
-                    if git status --porcelain | grep -q .  ; then
-                      BRANCH="bump-version/${NEW_VERSION}"
-                      echo "Preparing branch $BRANCH and committing changes"
-                      git checkout -B "$BRANCH"
-                      git add package.json || true
-                      git add packages/*/package.json || true
-                      git commit -m "chore(release): bump version to ${NEW_VERSION} [skip ci]" || true
-                    
-                      if git push --set-upstream origin "$BRANCH"; then
-                        echo "Pushed version bump to origin/$BRANCH"
-                      else
-                        echo "Normal push failed, attempting force-with-lease"
-                        git fetch origin "$BRANCH" || true
-                        git push --force-with-lease origin "$BRANCH"
-                        echo "Force-with-lease pushed version bump to origin/$BRANCH"
-                      fi
-                    
-                      echo "PUSHED_BRANCH=$BRANCH" >> $GITHUB_ENV
-                    else
-                      echo "No changes to commit"
+                    if git status --porcelain | grep -q . ; then
+                      BRANCH_NAME="bump-version/${NEW_VERSION}"
+                      git checkout -B "$BRANCH_NAME"
+                      git add .
+                      git commit -m "chore(release): bump version to ${NEW_VERSION} [skip ci]"
+                      git push origin "$BRANCH_NAME" --force
+                      echo "PUSHED_BRANCH=$BRANCH_NAME" >> $GITHUB_ENV
                     fi
 
-            -   name: Create Pull Request for version bump
+            -   name: Create and Auto-merge Pull Request
                 if: env.BUMP_TYPE != 'none' && env.PUSHED_BRANCH != ''
                 env:
                     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                 run: |
                     set -euo pipefail
-                    if [ -z "${PUSHED_BRANCH:-}" ]; then
-                      echo "No pushed branch recorded; skipping PR creation"
-                      exit 0
-                    fi
                     
-                    REPO="${GITHUB_REPOSITORY}"
-                    BRANCH="${PUSHED_BRANCH}"
+                    # Create Pull Request using GitHub CLI
+                    PR_URL=$(gh pr create \
+                      --title "chore(release): v${NEW_VERSION}" \
+                      --body "Automated version bump to ${NEW_VERSION}" \
+                      --base "main" \
+                      --head "${PUSHED_BRANCH}")
                     
-                    echo "Repository: $REPO"
-                    echo "Branch: $BRANCH"
-                    echo "Version: $NEW_VERSION"
+                    echo "Created PR: $PR_URL"
                     
-                    DEFAULT_BRANCH=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/${REPO}" | jq -r .default_branch)
-                    echo "Default branch is: $DEFAULT_BRANCH"
-                    
-                    PR_TITLE="chore(release): bump version to v${NEW_VERSION}"
-                    PR_BODY="Automated version bump to v${NEW_VERSION} by workflow: ${{ github.workflow }}\n\nBranch: ${BRANCH}"
-                    
-                    RESP=$(curl -s -X POST \
-                      -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-                      -H "Accept: application/vnd.github+json" \
-                      "https://api.github.com/repos/${REPO}/pulls" \
-                      -d "$(jq -n --arg t "$PR_TITLE" --arg h "$BRANCH" --arg b "$DEFAULT_BRANCH" --arg body "$PR_BODY" '{title:$t, head:$h, base:$b, body:$body, maintainer_can_modify:true}')" )
-                    
-                    PR_URL=$(echo "$RESP" | jq -r '.html_url // "null"')
-                    PR_NUMBER=$(echo "$RESP" | jq -r '.number // "null"')
-                    PR_MESSAGE=$(echo "$RESP" | jq -r '.message // "null"')
-                    
-                    if [ -n "$PR_URL" ] && [ "$PR_URL" != "null" ]; then
-                      echo "Created PR: $PR_URL"
-                      echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
-                    else
-                      echo "Failed to create PR: $PR_MESSAGE"
-                      echo "API response: $RESP"
-                      exit 1
+                    # Auto-merge if requested
+                    if [ "${{ github.event.inputs.auto_merge }}" = "true" ]; then
+                      # --auto: waits for status checks to pass before merging
+                      # --squash: combines commits into one
+                      # --delete-branch: cleans up the feature branch
+                      gh pr merge "$PR_URL" --auto --squash --delete-branch
+                      echo "PR set to auto-merge."
                     fi
 
-            -   name: Auto-merge bump PR (optional)
-                if: env. BUMP_TYPE != 'none' && github.event.inputs.auto_merge == 'yes' && env.PR_NUMBER != ''
-                env:
-                    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                run: |
-                    set -euo pipefail
-                    REPO="${GITHUB_REPOSITORY}"
-                    PR="${PR_NUMBER}"
-                    echo "Attempting to merge PR #${PR}..."
-
-                    # Try to merge (squash). This will fail if branch protection / required checks prevent it.
-                    MERGE_RESP=$(curl -s -X PUT \
-                      -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-                      -H "Accept: application/vnd.github+json" \
-                      "https://api.github.com/repos/${REPO}/pulls/${PR}/merge" \
-                      -d '{"commit_title":"chore(release): merge bump","merge_method":"squash"}')
-
-                    merged=$(echo "$MERGE_RESP" | jq -r '.merged // false')
-                    message=$(echo "$MERGE_RESP" | jq -r '.message // "null"')
-
-                    if [ "$merged" = "true" ]; then
-                      echo "PR #${PR} merged successfully."
-                    else
-                      echo "Failed to auto-merge PR #${PR} :  $message"
-                      echo "Merge response: $MERGE_RESP"
-                      # If you need a PAT that can bypass protections, set it in secrets (e.g. MERGE_PAT) and re-run with that token. 
-                      exit 1
-                    fi
-
-            -   name: Validate target package(s) presence
-                run: |
-                    set -euo pipefail
-                    PKG_INPUT="${{ github.event. inputs.package }}"
-                    if [ -z "${PKG_INPUT}" ] || [ "${PKG_INPUT}" = "null" ]; then
-                      PKG_INPUT="core"
-                    fi
-                    echo "Requested package to publish: ${PKG_INPUT}"
-                    
-                    if [ "${PKG_INPUT}" != "all" ]; then
-                      IFS=',' read -ra PKGS <<< "$PKG_INPUT"
-                      for PKG in "${PKGS[@]}"; do
-                        PKG="$(printf '%s' "${PKG}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-                        if [ -z "${PKG}" ]; then
-                          echo "Warning: empty package name segment in input; skipping"
-                          continue
-                        fi
-                        if [ ! -d "packages/${PKG}" ]; then
-                          echo "Error: target package directory packages/${PKG} not found"
-                          exit 1
-                        fi
-                      done
-                    fi
-
-            -   name: Configure npm auth for selected registries (use GH_PACKAGES_PAT for GitHub)
+            -   name: Configure NPM registries
                 env:
                     NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
                     GH_PACKAGES_PAT: ${{ secrets.GH_PACKAGES_PAT }}
                 run: |
                     set -euo pipefail
+                    PUBLISH_TARGET="${{ github.event.inputs.publish }}"
                     
-                    PUBLISH="${{ github.event.inputs. publish }}"
-                    if [ -z "${PUBLISH}" ] || [ "${PUBLISH}" = "null" ]; then
-                      PUBLISH="both"
-                    fi
-                    echo "Publish target: ${PUBLISH}"
+                    # Initialize .npmrc
+                    : > ~/.npmrc
                     
-                    # Prepare ~/. npmrc entries as needed.  publish commands pass --registry explicitly.
-                    # GitHub Packages token (use the GH_PACKAGES_PAT secret you created)
-                    if [ "${PUBLISH}" = "both" ] || [ "${PUBLISH}" = "github" ]; then
-                      if [ -z "${GH_PACKAGES_PAT:-}" ]; then
-                        echo "Error: secrets.GH_PACKAGES_PAT is required to publish to GitHub Packages but is not set."
-                        exit 1
-                      fi
-                      # Write only GitHub Packages auth (host-level) into ~/.npmrc
-                      printf "//npm.pkg.github.com/:_authToken=%s\n" "${GH_PACKAGES_PAT}" > ~/.npmrc
-                      echo "Configured GitHub Packages auth in ~/.npmrc (token hidden)"
-                    else
-                      # ensure ~/.npmrc exists for potential npmjs append
-                      :  > ~/.npmrc
+                    if [[ "$PUBLISH_TARGET" == "both" || "$PUBLISH_TARGET" == "github" ]]; then
+                      printf "//npm.pkg.github.com/:_authToken=%s\n" "${GH_PACKAGES_PAT}" >> ~/.npmrc
                     fi
                     
-                    # npmjs token if needed
-                    if [ "${PUBLISH}" = "both" ] || [ "${PUBLISH}" = "npmjs" ]; then
-                      if [ -z "${NPM_TOKEN:-}" ]; then
-                        echo "Error:  secrets.NPM_TOKEN is required to publish to npmjs.org but is not set."
-                        exit 1
-                      fi
+                    if [[ "$PUBLISH_TARGET" == "both" || "$PUBLISH_TARGET" == "npmjs" ]]; then
                       printf "//registry.npmjs.org/:_authToken=%s\n" "${NPM_TOKEN}" >> ~/.npmrc
-                      echo "Configured npmjs token in ~/.npmrc (token hidden)"
                     fi
-                    
-                    echo "---- ~/.npmrc (non-sensitive preview) ----"
-                    grep -v '_authToken' ~/.npmrc || true
-                    echo "---- end ----"
+                    echo "NPM registries configured."
 
-            -   name: Publish selected package(s) with bun (fallback to npm) and fail on publish errors
-                env:
-                    NPM_TOKEN: ${{ secrets. NPM_TOKEN }}
-                    GH_PACKAGES_PAT: ${{ secrets.GH_PACKAGES_PAT }}
+            -   name: Publish selected packages
                 run: |
-                    # We intentionally do NOT set -e so we can collect per-package errors and fail at end.
+                    # Continue on error to attempt publishing all selected packages
                     set -u -o pipefail
                     
                     PKG_INPUT="${{ github.event.inputs.package }}"
-                    if [ -z "${PKG_INPUT}" ] || [ "${PKG_INPUT}" = "null" ]; then
-                      PKG_INPUT="core"
-                    fi
-                    PUBLISH="${{ github.event.inputs.publish }}"
-                    if [ -z "${PUBLISH}" ] || [ "${PUBLISH}" = "null" ]; then
-                      PUBLISH="both"
-                    fi
+                    PUBLISH_TARGET="${{ github.event.inputs.publish }}"
                     
-                    failed=0
-                    fail_list=""
+                    # Define registry URLs
+                    NPMJS_REG="https://registry.npmjs.org/"
+                    GPR_REG="https://npm.pkg.github.com/"
                     
-                    publish_to_registry() {
-                      D="$1"
-                      REG="$2"
-                      if [ !  -f "$D/package.json" ]; then
-                        echo "Skipping $D for $REG:  package.json not found"
-                        return 0
-                      fi
-                      if jq -e '.private == true' "$D/package.json" >/dev/null 2>&1; then
-                        echo "Skipping $D for $REG: marked private"
-                        return 0
-                      fi
-                    
-                      pushd "$D" >/dev/null
-                      NAME=$(jq -r .name package.json)
-                      VER=$(jq -r .version package.json)
-                      if [ "${REG}" = "npmjs" ]; then
-                        REG_URL="https://registry.npmjs.org/"
-                      else
-                        REG_URL="https://npm.pkg.github.com/"
-                      fi
-                      echo "Publishing $NAME@$VER from $D to ${REG} (${REG_URL})"
-                    
-                      if command -v bun >/dev/null 2>&1 ; then
-                        if bun publish --registry="${REG_URL}"; then
-                          echo "bun publish to ${REG} succeeded for $NAME"
-                          popd >/dev/null
-                          return 0
-                        else
-                          echo "bun publish to ${REG} failed for $NAME; attempting npm fallback"
-                          if npm publish --registry="${REG_URL}"; then
-                            echo "npm publish to ${REG} succeeded for $NAME"
-                            popd >/dev/null
-                            return 0
-                          else
-                            echo "npm publish to ${REG} failed for $NAME"
-                            popd >/dev/null
-                            return 1
-                          fi
-                        fi
-                      else
-                        echo "bun not found; using npm publish to ${REG}"
-                        if npm publish --registry="${REG_URL}"; then
-                          echo "npm publish to ${REG} succeeded for $NAME"
-                          popd >/dev/null
-                          return 0
-                        else
-                          echo "npm publish to ${REG} failed for $NAME"
-                          popd >/dev/null
-                          return 1
-                        fi
-                      fi
+                    publish_cmd() {
+                      local dir=$1
+                      local reg_url=$2
+                      echo "Publishing $dir to $reg_url..."
+                      # Try bun publish, fallback to npm if it fails
+                      (cd "$dir" && bun publish --registry="$reg_url") || (cd "$dir" && npm publish --registry="$reg_url")
                     }
                     
-                    publish_dir() {
-                      D="$1"
-                      if [ "${PUBLISH}" = "both" ]; then
-                        publish_to_registry "$D" "npmjs"
-                        rc1=$?
-                        publish_to_registry "$D" "github"
-                        rc2=$?
-                        if [ $rc1 -ne 0 ] || [ $rc2 -ne 0 ]; then
-                          failed=$((failed+1))
-                          fail_list="${fail_list}${D} (npmjs: ${rc1} github:${rc2})\n"
-                          return 1
-                        fi
-                      elif [ "${PUBLISH}" = "npmjs" ]; then
-                        publish_to_registry "$D" "npmjs"
-                        rc=$?
-                        if [ $rc -ne 0 ]; then
-                          failed=$((failed+1))
-                          fail_list="${fail_list}${D} (npmjs)\n"
-                          return 1
-                        fi
-                      elif [ "${PUBLISH}" = "github" ]; then
-                        publish_to_registry "$D" "github"
-                        rc=$? 
-                        if [ $rc -ne 0 ]; then
-                          failed=$((failed+1))
-                          fail_list="${fail_list}${D} (github)\n"
-                          return 1
-                        fi
-                      else
-                        echo "Unknown publish target: ${PUBLISH}"
-                        exit 1
-                      fi
-                      return 0
-                    }
-                    
-                    if [ "${PKG_INPUT}" = "all" ]; then
-                      echo "Publishing all packages under packages/* to ${PUBLISH}"
-                      for D in packages/*; do
-                        if [ -d "$D" ]; then
-                          publish_dir "$D" || true
-                        fi
-                      done
+                    # Logic for "all" or specific list
+                    if [ "$PKG_INPUT" = "all" ]; then
+                      TARGETS=$(ls -d packages/*)
                     else
-                      IFS=',' read -ra PKGS <<< "$PKG_INPUT"
-                      for PKG in "${PKGS[@]}"; do
-                        PKG="$(printf '%s' "${PKG}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-                        if [ -z "${PKG}" ]; then
-                          echo "Warning: empty package name segment in input; skipping"
-                          continue
+                      IFS=',' read -ra ADDR <<< "$PKG_INPUT"
+                      TARGETS=""
+                      for i in "${ADDR[@]}"; do TARGETS+=" packages/${i// /}"; done
+                    fi
+                    
+                    for D in $TARGETS; do
+                      if [ -d "$D" ] && [ -f "$D/package.json" ]; then
+                        if [[ "$PUBLISH_TARGET" == "both" || "$PUBLISH_TARGET" == "npmjs" ]]; then
+                          publish_cmd "$D" "$NPMJS_REG"
                         fi
-                        TARGET="packages/${PKG}"
-                        publish_dir "${TARGET}" || true
-                      done
-                    fi
-                    
-                    if [ "$failed" -ne 0 ]; then
-                      echo -e "Publishing failed for the following packages:\n${fail_list}"
-                      exit 1
-                    fi
-                    
-                    echo "All requested publishes succeeded."
+                        if [[ "$PUBLISH_TARGET" == "both" || "$PUBLISH_TARGET" == "github" ]]; then
+                          publish_cmd "$D" "$GPR_REG"
+                        fi
+                      fi
+                    done
