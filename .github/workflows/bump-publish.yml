@@ -14,12 +14,12 @@ on:
                     - patch
                     - none
             package:
-                description: 'Which package(s) to publish (name(s) under packages/). Use "all" to publish all packages. To publish multiple packages at once, separate names with commas (e.g. "core,cli[...]
+                description: 'Which package(s) to publish (names under packages/). Use "all" to publish all packages. For multiple packages separate with commas, e.g. core,cli'
                 required: false
                 default: 'core'
                 type: string
             publish:
-                description: 'Where to publish: "both" (default) = npmjs.org and GitHub Packages, "npmjs" = npmjs.org only, "github" = GitHub Packages only'
+                description: 'Where to publish: "both" = npmjs.org and GitHub Packages, "npmjs" = npmjs.org only, "github" = GitHub Packages only'
                 required: false
                 default: 'both'
                 type: choice
@@ -29,8 +29,8 @@ on:
                     - github
 
 permissions:
-    contents: write    # for committing & pushing version changes
-    packages: write    # kept (harmless) — publishing uses tokens via secrets
+    contents: write
+    packages: write
 
 jobs:
     bump-and-publish:
@@ -96,7 +96,6 @@ jobs:
                     echo "NEW_VERSION=$NEW" >> $GITHUB_ENV
 
             -   name: Propagate new version to all packages/*/package.json
-                # 现在无论 bump 类型如何（包括 'none'）都会同步 root version 到 packages 下
                 run: |
                     set -euo pipefail
                     echo "Propagating version $NEW_VERSION to packages/*/package.json"
@@ -182,22 +181,17 @@ jobs:
                     fi
                     echo "Publish target: ${PUBLISH}"
                     
-                    # Prepare ~/.npmrc entries as needed. publish commands pass --registry explicitly.
-                    # GitHub Packages token (use the GH_PACKAGES_PAT secret you created)
                     if [ "${PUBLISH}" = "both" ] || [ "${PUBLISH}" = "github" ]; then
                       if [ -z "${GH_PACKAGES_PAT:-}" ]; then
                         echo "Error: secrets.GH_PACKAGES_PAT is required to publish to GitHub Packages but is not set."
                         exit 1
                       fi
-                      # Write only GitHub Packages auth (host-level) into ~/.npmrc
                       printf "//npm.pkg.github.com/:_authToken=%s\n" "${GH_PACKAGES_PAT}" > ~/.npmrc
                       echo "Configured GitHub Packages auth in ~/.npmrc (token hidden)"
                     else
-                      # ensure ~/.npmrc exists for potential npmjs append
                       : > ~/.npmrc
                     fi
                     
-                    # npmjs token if needed
                     if [ "${PUBLISH}" = "both" ] || [ "${PUBLISH}" = "npmjs" ]; then
                       if [ -z "${NPM_TOKEN:-}" ]; then
                         echo "Error: secrets.NPM_TOKEN is required to publish to npmjs.org but is not set."
@@ -206,17 +200,12 @@ jobs:
                       printf "//registry.npmjs.org/:_authToken=%s\n" "${NPM_TOKEN}" >> ~/.npmrc
                       echo "Configured npmjs token in ~/.npmrc (token hidden)"
                     fi
-                    
-                    echo "---- ~/.npmrc (non-sensitive preview) ----"
-                    grep -v '_authToken' ~/.npmrc || true
-                    echo "---- end ----"
 
             -   name: Publish selected package(s) with bun (fallback to npm) and fail on publish errors
                 env:
                     NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
                     GH_PACKAGES_PAT: ${{ secrets.GH_PACKAGES_PAT }}
                 run: |
-                    # We intentionally do NOT set -e so we can collect per-package errors and fail at end.
                     set -u -o pipefail
                     
                     PKG_INPUT="${{ github.event.inputs.package }}"
