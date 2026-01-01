@@ -152,40 +152,37 @@ jobs:
             -   name: Create Pull Request for version bump
                 if: env.BUMP_TYPE != 'none' && env.PUSHED_BRANCH != ''
                 env:
-                    GITHUB_TOKEN: ${{ secrets. GITHUB_TOKEN }}
+                    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                 run: |
                     set -euo pipefail
                     if [ -z "${PUSHED_BRANCH:-}" ]; then
                       echo "No pushed branch recorded; skipping PR creation"
                       exit 0
                     fi
-
+                    
                     REPO="${GITHUB_REPOSITORY}"
                     BRANCH="${PUSHED_BRANCH}"
-                    NEW_VERSION="${NEW_VERSION}"
-
+                    
                     echo "Repository: $REPO"
                     echo "Branch: $BRANCH"
                     echo "Version: $NEW_VERSION"
-
-                    # get default branch
+                    
                     DEFAULT_BRANCH=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/${REPO}" | jq -r .default_branch)
                     echo "Default branch is: $DEFAULT_BRANCH"
-
+                    
                     PR_TITLE="chore(release): bump version to v${NEW_VERSION}"
                     PR_BODY="Automated version bump to v${NEW_VERSION} by workflow: ${{ github.workflow }}\n\nBranch: ${BRANCH}"
-
-                    # create PR
+                    
                     RESP=$(curl -s -X POST \
                       -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-                      -H "Accept: application/vnd. github+json" \
+                      -H "Accept: application/vnd.github+json" \
                       "https://api.github.com/repos/${REPO}/pulls" \
                       -d "$(jq -n --arg t "$PR_TITLE" --arg h "$BRANCH" --arg b "$DEFAULT_BRANCH" --arg body "$PR_BODY" '{title:$t, head:$h, base:$b, body:$body, maintainer_can_modify:true}')" )
-
+                    
                     PR_URL=$(echo "$RESP" | jq -r '.html_url // "null"')
                     PR_NUMBER=$(echo "$RESP" | jq -r '.number // "null"')
                     PR_MESSAGE=$(echo "$RESP" | jq -r '.message // "null"')
-
+                    
                     if [ -n "$PR_URL" ] && [ "$PR_URL" != "null" ]; then
                       echo "Created PR: $PR_URL"
                       echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
