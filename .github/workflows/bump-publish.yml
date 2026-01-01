@@ -182,7 +182,7 @@ jobs:
                       "https://api.github.com/repos/${REPO}/pulls" \
                       -d "$(jq -n --arg t "$PR_TITLE" --arg h "$BRANCH" --arg b "$DEFAULT_BRANCH" --arg body "$PR_BODY" '{title:$t, head:$h, base:$b, body:$body, maintainer_can_modify:true}')" )
 
-                    PR_URL=$(echo "$RESP" | jq -r '. html_url // "null"')
+                    PR_URL=$(echo "$RESP" | jq -r '.html_url // "null"')
                     PR_NUMBER=$(echo "$RESP" | jq -r '.number // "null"')
                     PR_MESSAGE=$(echo "$RESP" | jq -r '.message // "null"')
 
