@@ -8,6 +8,8 @@
 ![bundle size](https://img.shields.io/bundlephobia/minzip/@thaterror/core)
 ![typescript](https://badgen.net/badge/icon/typescript?icon=typescript&label)
 [![CodeQL Analysis](https://github.com/tarnishablec/thaterror/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/tarnishablec/thaterror/actions/workflows/codeql-analysis.yml)
+[![Total TypeScript](https://img.shields.io/badge/Types-100%25%20Safe-blue?style=flat-square)](https://github.com/tarnishablec/thaterror)
+[![No Any](https://img.shields.io/badge/Any-None-success?style=flat-square)](https://github.com/tarnishablec/thaterror)
 
 A type-safe error handling library for TypeScript, heavily inspired by the experience of
 Rust's [thiserror](https://github.com/dtolnay/thiserror). It aims to remove the boilerplate while providing a seamless,
