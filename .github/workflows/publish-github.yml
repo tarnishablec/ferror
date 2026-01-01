@@ -17,10 +17,19 @@ on:
                 required: false
                 default: 'core'
                 type: string
+            publish:
+                description: 'Where to publish: "both" (default) = npmjs.org and GitHub Packages, "npmjs" = npmjs.org only, "github" = GitHub Packages only'
+                required: false
+                default: 'both'
+                type: choice
+                options:
+                    - both
+                    - npmjs
+                    - github
 
 permissions:
     contents: write    # for committing & pushing version changes
-    packages: write    # kept (harmless) — publishing uses npm registry via NPM_TOKEN
+    packages: write    # for publishing to GitHub Packages
 
 jobs:
     bump-and-publish:
@@ -152,27 +161,50 @@ jobs:
                       done
                     fi
 
-            -   name: Configure npm for npmjs.org (for bun publish auth)
+            -   name: Configure npm auth for selected registries (npmjs and/or GitHub Packages)
                 env:
                     NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+                    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                 run: |
                     set -euo pipefail
-                    if [ -z "${NPM_TOKEN:-}" ]; then
-                      echo "Error: secrets.NPM_TOKEN is not set. Add your npm publish token to repository secrets as NPM_TOKEN."
-                      exit 1
+
+                    PUBLISH="${{ github.event.inputs.publish }}"
+                    if [ -z "${PUBLISH}" ] || [ "${PUBLISH}" = "null" ]; then
+                      PUBLISH="both"
                     fi
-                    echo "Configuring npm for npmjs.org (token is NOT printed)"
-                    # Write auth token and default registry into ~/.npmrc (used by npm and bun)
-                    printf "//registry.npmjs.org/:_authToken=%s\n" "${NPM_TOKEN}" > ~/.npmrc
-                    printf "registry=https://registry.npmjs.org/\n" >> ~/.npmrc
-                    # show non-sensitive confirmation (hide token)
+                    echo "Publish target: ${PUBLISH}"
+
+                    # Prepare ~/.npmrc entries as needed. We avoid changing default registry;
+                    # publish commands will pass --registry explicitly.
+                    # Add npmjs token if needed
+                    if [ "${PUBLISH}" = "both" ] || [ "${PUBLISH}" = "npmjs" ]; then
+                      if [ -z "${NPM_TOKEN:-}" ]; then
+                        echo "Error: secrets.NPM_TOKEN is required to publish to npmjs.org but is not set."
+                        exit 1
+                      fi
+                      printf "//registry.npmjs.org/:_authToken=%s\n" "${NPM_TOKEN}" >> ~/.npmrc
+                      echo "Configured npmjs token in ~/.npmrc (token hidden)"
+                    fi
+
+                    # Add GitHub Packages token if needed
+                    if [ "${PUBLISH}" = "both" ] || [ "${PUBLISH}" = "github" ]; then
+                      if [ -z "${GITHUB_TOKEN:-}" ]; then
+                        echo "Error: GITHUB_TOKEN is required to publish to GitHub Packages but is not set."
+                        exit 1
+                      fi
+                      # GitHub Packages uses npm.pkg.github.com
+                      printf "//npm.pkg.github.com/:_authToken=%s\n" "${GITHUB_TOKEN}" >> ~/.npmrc
+                      echo "Configured GitHub Packages token in ~/.npmrc (token hidden)"
+                    fi
+
                     echo "---- ~/.npmrc (non-sensitive preview) ----"
                     grep -v '_authToken' ~/.npmrc || true
                     echo "---- end ----"
 
-            -   name: Publish selected package(s) with bun (fallback to npm if needed)
+            -   name: Publish selected package(s) with bun (fallback to npm if needed) to selected registries
                 env:
                     NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+                    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                 run: |
                     set -euo pipefail
                     
@@ -180,35 +212,78 @@ jobs:
                     if [ -z "${PKG_INPUT}" ] || [ "${PKG_INPUT}" = "null" ]; then
                       PKG_INPUT="core"
                     fi
+                    PUBLISH="${{ github.event.inputs.publish }}"
+                    if [ -z "${PUBLISH}" ] || [ "${PUBLISH}" = "null" ]; then
+                      PUBLISH="both"
+                    fi
                     
-                    publish_dir() {
+                    publish_to_registry() {
                       D="$1"
+                      REG="$2" # "npmjs" or "github"
                       if [ ! -f "$D/package.json" ]; then
-                        echo "Skipping $D: package.json not found"
+                        echo "Skipping $D for $REG: package.json not found"
                         return 1
                       fi
                       if jq -e '.private == true' "$D/package.json" >/dev/null 2>&1; then
-                        echo "Skipping $D: marked private"
+                        echo "Skipping $D for $REG: marked private"
                         return 0
                       fi
+                    
                       pushd "$D" >/dev/null
                       NAME=$(jq -r .name package.json)
                       VER=$(jq -r .version package.json)
-                      echo "Publishing $NAME@$VER from $D to npmjs.org"
-                      if command -v bun >/dev/null 2>&1 ; then
-                        bun publish --registry=https://registry.npmjs.org || {
-                          echo "bun publish failed for $D; attempting npm publish fallback"
-                          npm publish --registry=https://registry.npmjs.org
-                        }
+                      if [ "${REG}" = "npmjs" ]; then
+                        REG_URL="https://registry.npmjs.org/"
                       else
-                        echo "bun not found; using npm publish"
-                        npm publish --registry=https://registry.npmjs.org
+                        # GitHub Packages npm registry
+                        REG_URL="https://npm.pkg.github.com/"
+                      fi
+                      echo "Publishing $NAME@$VER from $D to ${REG} (${REG_URL})"
+                      if command -v bun >/dev/null 2>&1 ; then
+                        if bun publish --registry="${REG_URL}"; then
+                          echo "bun publish to ${REG} succeeded for $NAME"
+                        else
+                          echo "bun publish to ${REG} failed for $NAME; attempting npm fallback"
+                          if npm publish --registry="${REG_URL}"; then
+                            echo "npm publish to ${REG} succeeded for $NAME"
+                          else
+                            echo "npm publish to ${REG} failed for $NAME"
+                            popd >/dev/null
+                            return 1
+                          fi
+                        fi
+                      else
+                        echo "bun not found; using npm publish to ${REG}"
+                        if npm publish --registry="${REG_URL}"; then
+                          echo "npm publish to ${REG} succeeded for $NAME"
+                        else
+                          echo "npm publish to ${REG} failed for $NAME"
+                          popd >/dev/null
+                          return 1
+                        fi
                       fi
                       popd >/dev/null
+                      return 0
+                    }
+                    
+                    publish_dir() {
+                      D="$1"
+                      # If PUBLISH is both, attempt npmjs then github (continue on errors)
+                      if [ "${PUBLISH}" = "both" ]; then
+                        publish_to_registry "$D" "npmjs" || echo "Warning: publish to npmjs failed for $D; continuing"
+                        publish_to_registry "$D" "github" || echo "Warning: publish to github failed for $D; continuing"
+                      elif [ "${PUBLISH}" = "npmjs" ]; then
+                        publish_to_registry "$D" "npmjs" || echo "Warning: publish to npmjs failed for $D"
+                      elif [ "${PUBLISH}" = "github" ]; then
+                        publish_to_registry "$D" "github" || echo "Warning: publish to github failed for $D"
+                      else
+                        echo "Unknown publish target: ${PUBLISH}"
+                        exit 1
+                      fi
                     }
                     
                     if [ "${PKG_INPUT}" = "all" ]; then
-                      echo "Publishing all packages under packages/*"
+                      echo "Publishing all packages under packages/* to ${PUBLISH}"
                       for D in packages/*; do
                         if [ -d "$D" ]; then
                           publish_dir "$D" || true
