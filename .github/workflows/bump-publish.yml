@@ -4,7 +4,7 @@ on:
     workflow_dispatch:
         inputs:
             bump:
-                description: 'Which semver part to bump. Use "none" to skip bumping and publish the current version as-is.'
+                description: 'Which semver part to bump.  Use "none" to skip bumping and publish the current version as-is.'
                 required: false
                 default: 'patch'
                 type: choice
@@ -14,19 +14,19 @@ on:
                     - patch
                     - none
             package:
-                description: 'Which package(s) to publish (names under packages/). Use "all" to publish all packages. For multiple packages separate with commas, e.g. core,cli'
+                description: 'Which package(s) to publish (names under packages/). Use "all" to publish all packages.  For multiple packages separate with commas, e.g. core,cli'
                 required: false
                 default: 'core'
                 type: string
             publish:
-                description: 'Where to publish: "both" (default) = npmjs.org and GitHub Packages, "npmjs" = npmjs.org only, "github" = GitHub Packages only'
+                description: 'Where to publish:  "both" (default) = npmjs. org and GitHub Packages, "npmjs" = npmjs.org only, "github" = GitHub Packages only'
                 required: false
                 default: 'npmjs'
                 type: choice
                 options:
                     - both
                     - npmjs
-                    - github
+                    - github(deprecated)
             auto_merge:
                 description: 'Whether to automatically merge the created bump PR into the default branch (may fail if branch protection/required checks exist).'
                 required: false
@@ -56,9 +56,9 @@ jobs:
                 run: |
                     bun --version || true
 
-            -   name: Validate root package.json exists
+            -   name: Validate root package. json exists
                 run: |
-                    if [ ! -f package.json ]; then
+                    if [ !  -f package.json ]; then
                       echo "Root package.json not found"
                       exit 1
                     fi
@@ -80,7 +80,7 @@ jobs:
                         echo "Failed to read current version from package.json"
                         exit 1
                       fi
-                      echo "Skipping bump. Using current version: $NEW"
+                      echo "Skipping bump.  Using current version: $NEW"
                     else
                       if command -v bun >/dev/null 2>&1; then
                         bun pm version "$BUMP_TYPE" --no-git-tag-version
@@ -94,7 +94,7 @@ jobs:
                         echo "Failed to read new version from package.json"
                         exit 1
                       fi
-                      echo "Bumped version: $NEW"
+                      echo "Bumped version:  $NEW"
                     fi
                     
                     echo "BUMP_TYPE=$BUMP_TYPE" >> $GITHUB_ENV
@@ -108,7 +108,7 @@ jobs:
                       if [ -f "$P/package.json" ]; then
                         OLD=$(jq -r .version "$P/package.json" || echo "")
                         if [ "$OLD" != "$NEW_VERSION" ]; then
-                          jq --arg v "$NEW_VERSION" '.version = $v' "$P/package.json" > "$P/package.json.tmp"
+                          jq --arg v "$NEW_VERSION" '. version = $v' "$P/package.json" > "$P/package.json.tmp"
                           mv "$P/package.json.tmp" "$P/package.json"
                           echo "Updated $P/package.json -> $(jq -r .version "$P/package.json")"
                         else
@@ -118,7 +118,7 @@ jobs:
                     done
 
             -   name: 'Commit and push version changes (normal push, fallback to --force-with-lease)'
-                if: env.BUMP_TYPE != 'none'
+                if: env. BUMP_TYPE != 'none'
                 env:
                     GIT_AUTHOR_NAME: github-actions
                     GIT_AUTHOR_EMAIL: github-actions@users.noreply.github.com
@@ -127,7 +127,7 @@ jobs:
                     git config user.name "${GIT_AUTHOR_NAME}"
                     git config user.email "${GIT_AUTHOR_EMAIL}"
                     
-                    if git status --porcelain | grep -q . ; then
+                    if git status --porcelain | grep -q .  ; then
                       BRANCH="bump-version/${NEW_VERSION}"
                       echo "Preparing branch $BRANCH and committing changes"
                       git checkout -B "$BRANCH"
@@ -152,7 +152,7 @@ jobs:
             -   name: Create Pull Request for version bump
                 if: env.BUMP_TYPE != 'none' && env.PUSHED_BRANCH != ''
                 env:
-                    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                    GITHUB_TOKEN: ${{ secrets. GITHUB_TOKEN }}
                 run: |
                     set -euo pipefail
                     if [ -z "${PUSHED_BRANCH:-}" ]; then
@@ -178,13 +178,13 @@ jobs:
                     # create PR
                     RESP=$(curl -s -X POST \
                       -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-                      -H "Accept: application/vnd.github+json" \
+                      -H "Accept: application/vnd. github+json" \
                       "https://api.github.com/repos/${REPO}/pulls" \
                       -d "$(jq -n --arg t "$PR_TITLE" --arg h "$BRANCH" --arg b "$DEFAULT_BRANCH" --arg body "$PR_BODY" '{title:$t, head:$h, base:$b, body:$body, maintainer_can_modify:true}')" )
 
-                    PR_URL=$(echo "$RESP" | jq -r .html_url // empty)
-                    PR_NUMBER=$(echo "$RESP" | jq -r .number // empty)
-                    PR_MESSAGE=$(echo "$RESP" | jq -r .message // empty)
+                    PR_URL=$(echo "$RESP" | jq -r '. html_url // "null"')
+                    PR_NUMBER=$(echo "$RESP" | jq -r '.number // "null"')
+                    PR_MESSAGE=$(echo "$RESP" | jq -r '.message // "null"')
 
                     if [ -n "$PR_URL" ] && [ "$PR_URL" != "null" ]; then
                       echo "Created PR: $PR_URL"
@@ -196,7 +196,7 @@ jobs:
                     fi
 
             -   name: Auto-merge bump PR (optional)
-                if: env.BUMP_TYPE != 'none' && github.event.inputs.auto_merge == 'yes' && env.PR_NUMBER != ''
+                if: env. BUMP_TYPE != 'none' && github.event.inputs.auto_merge == 'yes' && env.PR_NUMBER != ''
                 env:
                     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                 run: |
@@ -212,22 +212,22 @@ jobs:
                       "https://api.github.com/repos/${REPO}/pulls/${PR}/merge" \
                       -d '{"commit_title":"chore(release): merge bump","merge_method":"squash"}')
 
-                    merged=$(echo "$MERGE_RESP" | jq -r .merged // false)
-                    message=$(echo "$MERGE_RESP" | jq -r .message // empty)
+                    merged=$(echo "$MERGE_RESP" | jq -r '.merged // false')
+                    message=$(echo "$MERGE_RESP" | jq -r '.message // "null"')
 
                     if [ "$merged" = "true" ]; then
                       echo "PR #${PR} merged successfully."
                     else
-                      echo "Failed to auto-merge PR #${PR} : $message"
+                      echo "Failed to auto-merge PR #${PR} :  $message"
                       echo "Merge response: $MERGE_RESP"
-                      # If you need a PAT that can bypass protections, set it in secrets (e.g. MERGE_PAT) and re-run with that token.
+                      # If you need a PAT that can bypass protections, set it in secrets (e.g. MERGE_PAT) and re-run with that token. 
                       exit 1
                     fi
 
             -   name: Validate target package(s) presence
                 run: |
                     set -euo pipefail
-                    PKG_INPUT="${{ github.event.inputs.package }}"
+                    PKG_INPUT="${{ github.event. inputs.package }}"
                     if [ -z "${PKG_INPUT}" ] || [ "${PKG_INPUT}" = "null" ]; then
                       PKG_INPUT="core"
                     fi
@@ -255,13 +255,13 @@ jobs:
                 run: |
                     set -euo pipefail
                     
-                    PUBLISH="${{ github.event.inputs.publish }}"
+                    PUBLISH="${{ github.event.inputs. publish }}"
                     if [ -z "${PUBLISH}" ] || [ "${PUBLISH}" = "null" ]; then
                       PUBLISH="both"
                     fi
                     echo "Publish target: ${PUBLISH}"
                     
-                    # Prepare ~/.npmrc entries as needed. publish commands pass --registry explicitly.
+                    # Prepare ~/. npmrc entries as needed.  publish commands pass --registry explicitly.
                     # GitHub Packages token (use the GH_PACKAGES_PAT secret you created)
                     if [ "${PUBLISH}" = "both" ] || [ "${PUBLISH}" = "github" ]; then
                       if [ -z "${GH_PACKAGES_PAT:-}" ]; then
@@ -273,13 +273,13 @@ jobs:
                       echo "Configured GitHub Packages auth in ~/.npmrc (token hidden)"
                     else
                       # ensure ~/.npmrc exists for potential npmjs append
-                      : > ~/.npmrc
+                      :  > ~/.npmrc
                     fi
                     
                     # npmjs token if needed
                     if [ "${PUBLISH}" = "both" ] || [ "${PUBLISH}" = "npmjs" ]; then
                       if [ -z "${NPM_TOKEN:-}" ]; then
-                        echo "Error: secrets.NPM_TOKEN is required to publish to npmjs.org but is not set."
+                        echo "Error:  secrets.NPM_TOKEN is required to publish to npmjs.org but is not set."
                         exit 1
                       fi
                       printf "//registry.npmjs.org/:_authToken=%s\n" "${NPM_TOKEN}" >> ~/.npmrc
@@ -292,7 +292,7 @@ jobs:
 
             -   name: Publish selected package(s) with bun (fallback to npm) and fail on publish errors
                 env:
-                    NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+                    NPM_TOKEN: ${{ secrets. NPM_TOKEN }}
                     GH_PACKAGES_PAT: ${{ secrets.GH_PACKAGES_PAT }}
                 run: |
                     # We intentionally do NOT set -e so we can collect per-package errors and fail at end.
@@ -313,8 +313,8 @@ jobs:
                     publish_to_registry() {
                       D="$1"
                       REG="$2"
-                      if [ ! -f "$D/package.json" ]; then
-                        echo "Skipping $D for $REG: package.json not found"
+                      if [ !  -f "$D/package.json" ]; then
+                        echo "Skipping $D for $REG:  package.json not found"
                         return 0
                       fi
                       if jq -e '.private == true' "$D/package.json" >/dev/null 2>&1; then
@@ -372,7 +372,7 @@ jobs:
                         rc2=$?
                         if [ $rc1 -ne 0 ] || [ $rc2 -ne 0 ]; then
                           failed=$((failed+1))
-                          fail_list="${fail_list}${D} (npmjs:${rc1} github:${rc2})\n"
+                          fail_list="${fail_list}${D} (npmjs: ${rc1} github:${rc2})\n"
                           return 1
                         fi
                       elif [ "${PUBLISH}" = "npmjs" ]; then
@@ -385,7 +385,7 @@ jobs:
                         fi
                       elif [ "${PUBLISH}" = "github" ]; then
                         publish_to_registry "$D" "github"
-                        rc=$?
+                        rc=$? 
                         if [ $rc -ne 0 ]; then
                           failed=$((failed+1))
                           fail_list="${fail_list}${D} (github)\n"
