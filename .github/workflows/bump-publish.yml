@@ -108,7 +108,7 @@ jobs:
                       if [ -f "$P/package.json" ]; then
                         OLD=$(jq -r .version "$P/package.json" || echo "")
                         if [ "$OLD" != "$NEW_VERSION" ]; then
-                          jq --arg v "$NEW_VERSION" '. version = $v' "$P/package.json" > "$P/package.json.tmp"
+                          jq --arg v "$NEW_VERSION" '.version = $v' "$P/package.json" > "$P/package.json.tmp"
                           mv "$P/package.json.tmp" "$P/package.json"
                           echo "Updated $P/package.json -> $(jq -r .version "$P/package.json")"
                         else
