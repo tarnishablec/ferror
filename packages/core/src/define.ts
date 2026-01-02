@@ -21,7 +21,7 @@ class InternalBaseError<const Code extends string, const Payloads extends readon
     readonly [CodeField]: Code;
 
     constructor(
-        public readonly code: Code,
+        readonly code: Code,
         args: Payloads,
         readonly scope: symbol,
         message: string,
