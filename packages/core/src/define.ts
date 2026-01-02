@@ -14,33 +14,6 @@ import {
 } from "./types";
 
 
-class InternalBaseError<const Code extends string, const Payloads extends readonly unknown[]> extends Error implements DefinedError<Code, Payloads> {
-    readonly [ErrorBrand] = true as const;
-    readonly [ScopeField]: symbol;
-    readonly [PayloadField]: Payloads;
-    readonly [CodeField]: Code;
-
-    constructor(
-        readonly code: Code,
-        args: Payloads,
-        readonly scope: symbol,
-        message: string,
-        options?: ErrorOptions
-    ) {
-        super(message, options);
-        this.name = code;
-        this[CodeField] = code;
-        this[ScopeField] = scope;
-        this[PayloadField] = args;
-
-        Error.captureStackTrace(this, this.constructor);
-    }
-
-    is<K extends string, S extends ErrorSpec>(errorCase: ErrorCase<K, S>): this is DefinedError<K, ExtractPayload<S>> {
-        return this[CodeField] as unknown === errorCase[CodeField];
-    }
-}
-
 export function That<const M extends ErrorMap>(
     map: M
 ): ErrorFamily<M> {
@@ -50,8 +23,40 @@ export function That<const M extends ErrorMap>(
     for (const key in map) {
         const spec = map[key];
 
+        type Payload = ExtractPayload<M[typeof key]>;
+        type Code = typeof key;
+
+        const InternalBaseError = class extends Error implements DefinedError<Code, Payload> {
+            readonly [ErrorBrand] = true as const;
+            readonly [ScopeField]: symbol;
+            readonly [PayloadField]: Payload;
+            readonly [CodeField]: Code;
+
+            constructor(
+                readonly code: Code,
+                args: Payload,
+                readonly scope: symbol,
+                message: string,
+                options?: ErrorOptions
+            ) {
+                super(message, options);
+                this.name = code;
+                this[CodeField] = code;
+                this[ScopeField] = scope;
+                this[PayloadField] = args;
+
+                Error.captureStackTrace(this, this.constructor);
+            }
+
+            is<K extends string, S extends ErrorSpec>(errorCase: ErrorCase<K, S>): this is DefinedError<K, ExtractPayload<S>> {
+                return this[CodeField] as unknown === errorCase[CodeField];
+            }
+        }
+
+        Object.defineProperty(InternalBaseError, 'name', {value: key, configurable: true});
+
         const factory = (...args: unknown[]): ErrorUnionOfMap<M> => {
-            let finalArgs: unknown[] = args;
+            let finalArgs = args;
             let options: ErrorOptions | undefined;
 
             if (typeof spec === "function") {
@@ -63,12 +68,12 @@ export function That<const M extends ErrorMap>(
                     }
                 }
                 const message = (spec as (...a: unknown[]) => string)(...finalArgs);
-                return new InternalBaseError(key, finalArgs, scope, message, options) as unknown as ErrorUnionOfMap<M>;
+                return new InternalBaseError(key, finalArgs as Payload, scope, message, options);
             }
 
             if (typeof spec === "string") {
                 options = args[0] as ErrorOptions | undefined;
-                return new InternalBaseError(key, [], scope, spec, options) as unknown as ErrorUnionOfMap<M>;
+                return new InternalBaseError(key, [] as Payload, scope, spec, options);
             }
 
             throw new Error("Invalid ErrorSpec");
