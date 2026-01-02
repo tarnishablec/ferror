@@ -12,7 +12,7 @@ export interface DefinedError<
     readonly [PayloadField]: Payload;
     readonly [CodeField]: Code;
 
-    at(options?: ErrorOptions): this;
+    at(options?: ErrorOptions & Record<string, unknown>): this;
 
     is<K extends string, S extends ErrorSpec>(errorCase: ErrorCase<K, S>): this is DefinedError<K, ExtractPayload<S>>;
 }

@@ -34,6 +34,7 @@ export function That<const M extends ErrorMap>(
             readonly [CodeField]: Code;
 
             constructor(
+                _caller: (...args: Payload) => ErrorUnionOfMap<M>,
                 readonly code: Code,
                 args: Payload,
                 readonly scope: symbol,
@@ -45,7 +46,7 @@ export function That<const M extends ErrorMap>(
                 this[ScopeField] = scope;
                 this[PayloadField] = args;
 
-                Error.captureStackTrace(this);
+                Error.captureStackTrace(this, _caller);
             }
 
             at(options?: ErrorOptions): this {
@@ -71,7 +72,7 @@ export function That<const M extends ErrorMap>(
                 throw new Error(`Invalid error spec ${spec}`)
             }
 
-            return new InternalBaseError(key, args, scope, message);
+            return new InternalBaseError(factory, key, args, scope, message);
         };
 
         factory[CodeField] = key;
