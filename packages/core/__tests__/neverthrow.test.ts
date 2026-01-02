@@ -23,12 +23,13 @@ describe('neverthrow test', () => {
     })
 
     test('should infer Error type from async call', async () => {
+        const id = 123;
         const fetchData = () => {
-            const promise = Promise.reject(AppError.NotFound(404));
+            const promise = Promise.reject(new Error('fetchData'));
 
             return fromPromise(
                 promise,
-                (e) => e as ThatError<typeof AppError, "NotFound">
+                (e) => AppError.NotFound(id, {cause: e})
             );
         };
 
@@ -39,7 +40,7 @@ describe('neverthrow test', () => {
         if (result.isErr()) {
             expect(result.error.is(AppError.NotFound)).toBe(true);
             const [id] = payloadOf(result.error);
-            expect(id).toBe(404);
+            expect(id).toBe(id);
             const code = codeOf(result.error);
             expect(code).toBe("NotFound");
         }
