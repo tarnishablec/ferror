@@ -135,7 +135,7 @@ try {
 } catch (e: unknown) {
     if (e instanceof MyLegacyError) {
         // If 'e' might be an unregistered error class, TS will alert you here
-        const error = MyFamily.from(e);
+        const error = ExAppError.from(e);
         // error is typed as MyFamily.NotFound
     }
 }
