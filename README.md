@@ -11,9 +11,9 @@
 [![Total TypeScript](https://img.shields.io/badge/Types-100%25%20Safe-blue)](https://github.com/tarnishablec/thaterror)
 [![No Any](https://img.shields.io/badge/Any-None-success)](https://github.com/tarnishablec/thaterror)
 
-A concise, type-safe error handling toolkit for TypeScript inspired by Rust's thiserror. Use the
+A concise, type-safe error handling toolkit for TypeScript inspired by Rust's [thiserror](https://github.com/dtolnay/thiserror). Use the
 `@thaterror/core` package to define domain-driven error families with zero boilerplate, then adopt
-or serialize them with optional adapters (for example, a `pino` adapter is available).
+or serialize them with optional adapters (for example, a [pino](https://github.com/pinojs/pino) adapter is available).
 
 ## The Core Value
 
@@ -63,7 +63,7 @@ bun add @thaterror/pino-adapter pino
 
 See the individual package READMEs for development and testing instructions.
 
-## Examples ✨ — `Rust thiserror` / `@thaterror/core` / `Native Error`
+## Comparison ✨ — `Rust thiserror` / `@thaterror/core` / `Native Error`
 
 Rust (thiserror) 🦀
 
@@ -116,7 +116,7 @@ throw App.NotFound('123');
 // - Cost: minimal boilerplate with strong TypeScript typing.
 ```
 
-Use `@thaterror/core` with `neverthrow` — full Rust-like Result<T, E> experience 🧭
+Use `@thaterror/core` with [neverthrow](https://github.com/supermacro/neverthrow) — full Rust-like Result<T, E> experience 🧭
 
 ```ts
 // Combine @thaterror/core (typed errors) with neverthrow's Result for ergonomic,
