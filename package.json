@@ -24,6 +24,7 @@
         "lint:fix": "biome check --write",
         "syncpack:list": "syncpack list-mismatches",
         "syncpack:fix": "syncpack fix-mismatches",
+        "precommit:check": "bun test && bun run lint:check && bun run type-check && bun run syncpack:list",
         "install:clean": "bun pm cache rm && bunx rimraf bun.lock bun.lockb && bun install"
     }
 }
