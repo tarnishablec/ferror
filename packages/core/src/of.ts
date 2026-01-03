@@ -1,11 +1,4 @@
-import {
-    CodeField,
-    type DefinedError,
-    type ErrorCase,
-    type ErrorFamily,
-    PayloadField,
-    ScopeField
-} from "./types";
+import { CodeField, type DefinedError, type ErrorCase, type ErrorFamily, PayloadField, ScopeField } from "./types";
 
 export interface Scoped {
     readonly [ScopeField]: symbol;

@@ -57,7 +57,7 @@ export function That<const M extends ErrorMap>(
             is<K extends string, S extends ErrorSpec>(errorCase: ErrorCase<K, S>): this is DefinedError<K, ExtractPayload<S>> {
                 return this[CodeField] as unknown === errorCase[CodeField];
             }
-        }
+        };
 
         Object.defineProperty(InternalBaseError, 'name', {value: key, configurable: true});
 

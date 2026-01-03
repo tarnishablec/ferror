@@ -144,7 +144,8 @@ try {
 ## 🧪 Deterministic Tracing: The "Callback-Local" Anchor
 
 In JavaScript, asynchronous stack traces are notoriously fragile. When you wrap errors inside a callback
-like [neverthrow](https://github.com/supermacro/neverthrow) 's `ResultAsync.fromPromise`, the stack trace often points to
+like [neverthrow](https://github.com/supermacro/neverthrow) 's `ResultAsync.fromPromise`, the stack trace often points
+to
 the library's internal dispatchers rather than your business logic.
 
 ```ts
@@ -169,14 +170,17 @@ if (result.isErr()) {
     console.log(result.error.stack);
 }
 ```
+
 The Resulting "Messy" Stack Trace:
+
 ```shell
 Error: Failed to connect: "ws://localhost:3000"
     at /project/node_modules/neverthrow/dist/index.cjs.js:106:34  <-- 🛑 Useless! Internal library code.
     at processTicksAndRejections (native)
 ```
 
-You’ll notice the top frames point to internal files of `neverthrow`, making it impossible to see where your business logic actually failed.
+You’ll notice the top frames point to internal files of `neverthrow`, making it impossible to see where your business
+logic actually failed.
 
 ### The "Magic" of `.with()`
 
@@ -188,10 +192,12 @@ moment** of failure within your callback.
 // location: project/mcp/client.ts
 return ResultAsync.fromPromise(
     client.connect(url),
-    (error) => MCPError.CONNECTION_FAILED(url).with({ cause: error })
+    (error) => MCPError.CONNECTION_FAILED(url).with({cause: error})
 );
 ```
+
 now the stack trace points to your business logic:
+
 ```shell
 Error: Failed to connect: "ws://localhost:3000"
     at /project/mcp/client.ts:15:11  <-- 🟢 Useful! Business code.
@@ -200,15 +206,23 @@ Error: Failed to connect: "ws://localhost:3000"
 ```
 
 🎯 The "Crime Scene": Callback Freedom
-With the .with() anchor, you are finally free to nest your business logic deep within any callback without fear of losing context.
+With the .with() anchor, you are finally free to nest your business logic deep within any callback without fear of
+losing context.
 
-To be honest, at the implementation level, `.with()` is almost a "no-op" (it just returns `this`). However, in the physical world of V8 and asynchronous microtasks, it acts as a **Quantum Observer**.
+To be honest, at the implementation level, `.with()` is almost a "no-op" (it just returns `this`). However, in the
+physical world of V8 and asynchronous microtasks, it acts as a **Quantum Observer**.
 
 #### Why "It Just Works":
-- **Microtask Locking**: By calling `.with()` immediately within your callback, you force the engine to interact with the error object before the current microtask ends. This "extra step" effectively nails the stack trace to the physical floor before the asynchronous execution context evaporates.
-- **Optimization Barrier**: It prevents the JIT compiler from over-optimizing (inlining) the factory call into the library's internal dispatchers, preserving the "Crime Scene" frames.
 
-> **Man, what can I say?** We can't fully explain why the ghost of the stack trace stays longer when you call `.with()`, but the experimental evidence is clear: **It just works.** Call it, and you'll never have to guess where your errors came from again.
+- **Microtask Locking**: By calling `.with()` immediately within your callback, you force the engine to interact with
+  the error object before the current microtask ends. This "extra step" effectively nails the stack trace to the
+  physical floor before the asynchronous execution context evaporates.
+- **Optimization Barrier**: It prevents the JIT compiler from over-optimizing (inlining) the factory call into the
+  library's internal dispatchers, preserving the "Crime Scene" frames.
+
+> **Man, what can I say?** We can't fully explain why the ghost of the stack trace stays longer when you call `.with()`,
+> but the experimental evidence is clear: **It just works.** Call it, and you'll never have to guess where your errors
+> came from again.
 
 ## 📜 License
 

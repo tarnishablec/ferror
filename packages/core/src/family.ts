@@ -1,6 +1,7 @@
 import {
     type ErrorCase,
-    type ErrorFamily, type ErrorFamilyCases,
+    type ErrorFamily,
+    type ErrorFamilyCases,
     type ErrorFamilyOperator,
     type ErrorMap,
     type ErrorUnionOfMap,
@@ -33,7 +34,7 @@ type RegistryEntry<M extends ErrorMap> = EnrollEntry<M> | BridgeEntry<M>;
 class OperatorImpl<M extends ErrorMap, Es extends readonly (readonly [Error, ErrorUnionOfMap<M>])[]>
     implements ErrorFamilyOperator<M, Es> {
     constructor(
-        private readonly _cases:ErrorFamilyCases<M>,
+        private readonly _cases: ErrorFamilyCases<M>,
         private readonly _scope: symbol,
         private readonly _registry: readonly RegistryEntry<M>[] = []
     ) {
