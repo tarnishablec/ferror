@@ -206,7 +206,6 @@ To be honest, at the implementation level, `.with()` is almost a "no-op" (it jus
 #### Why "It Just Works":
 - **Microtask Locking**: By calling `.with()` immediately within your callback, you force the engine to interact with the error object before the current microtask ends. This "extra step" effectively nails the stack trace to the physical floor before the asynchronous execution context evaporates.
 - **Optimization Barrier**: It prevents the JIT compiler from over-optimizing (inlining) the factory call into the library's internal dispatchers, preserving the "Crime Scene" frames.
-- **Future-Proofing**: It provides a stable entry point for future metadata (like `traceId` or `severity`) without refactoring your entire codebase.
 
 > **Man, what can I say?** We can't fully explain why the ghost of the stack trace stays longer when you call `.with()`, but the experimental evidence is clear: **It just works.** Call it, and you'll never have to guess where your errors came from again.
 
