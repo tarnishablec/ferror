@@ -6,6 +6,7 @@
     "type": "module",
     "licenses": [
         {
+            "type": "MPL-2.0",
             "url": "https://github.com/tarnishablec/thaterror/blob/main/LICENSE"
         }
     ],

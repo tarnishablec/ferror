@@ -16,7 +16,7 @@ on:
             package:
                 description: 'Package names (comma separated) or "all"'
                 required: false
-                default: 'core,pino-serializer'
+                default: 'core,pino-adapter'
                 type: string
             publish:
                 description: 'Publish destination'

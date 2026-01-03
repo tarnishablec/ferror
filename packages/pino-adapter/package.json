@@ -1,9 +1,22 @@
 {
-    "name": "@thaterror/pino-serializer",
+    "name": "@thaterror/pino-adapter",
     "version": "0.3.0",
     "module": "src/index.ts",
     "type": "module",
     "private": true,
+    "licenses": [
+        {
+            "type": "MPL-2.0",
+            "url": "https://github.com/tarnishablec/thaterror/blob/main/LICENSE"
+        }
+    ],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/tarnishablec/thaterror.git"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
     "devDependencies": {
         "@types/bun": "latest"
     },
