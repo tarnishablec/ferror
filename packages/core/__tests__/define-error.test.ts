@@ -2,7 +2,7 @@
  * Copyright 2019-Present tarnishablec. All Rights Reserved.
  */
 
-import {describe, expect, test} from "bun:test";
+import { describe, expect, test } from "bun:test";
 import {
     CodeField,
     ErrorBrand,
@@ -77,7 +77,7 @@ describe("defineError strict type testing", () => {
 
     test("should support native Error.cause (#[source])", () => {
         const original = new Error("Connection lost");
-        const err = AppError.Unauthorized().with({cause: original});
+        const err = AppError.Unauthorized().with({ cause: original });
 
         expect(err.cause).toBe(original);
 

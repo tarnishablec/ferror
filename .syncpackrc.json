@@ -1,5 +1,5 @@
 {
-    "$schema": "https://unpkg.com/syncpack/dist/schema.json",
+    "$schema": "node_modules/syncpack/dist/schema.json",
     "versionGroups": [
         {
             "label": "Use workspace protocol when developing local packages",

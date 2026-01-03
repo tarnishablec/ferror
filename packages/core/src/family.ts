@@ -57,7 +57,7 @@ class OperatorImpl<
         errorClass: T,
         mapper: <_K>(
             e: E,
-            cases: {[K in keyof M & string]: ErrorCase<K, M[K]>},
+            cases: { [K in keyof M & string]: ErrorCase<K, M[K]> },
         ) => C,
     ): ErrorFamily<M, Upsert<Es, E, C>> {
         const internalMapper: BridgeEntry<M>["mapper"] = (e, cases) => {
@@ -163,7 +163,7 @@ export function createFamilyInstance<
     const op = new OperatorImpl<M, Es>(cases, scope, registry);
 
     const descriptors: PropertyDescriptorMap = {
-        [ScopeField]: {value: scope, enumerable: false, configurable: false},
+        [ScopeField]: { value: scope, enumerable: false, configurable: false },
         enroll: {
             value: op.enroll.bind(op),
             enumerable: false,

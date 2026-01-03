@@ -75,7 +75,7 @@ export interface ErrorFamilyOperator<
      * @returns A new `ErrorFamily` instance with an updated type-safe registry.
      */
     enroll<
-        T extends {new (...args: never[]): Error; readonly prototype: Error},
+        T extends { new (...args: never[]): Error; readonly prototype: Error },
         K extends keyof M & string,
         U extends ErrorUnionOfMap<M>,
         E extends InstanceOfError<T>,
@@ -93,14 +93,14 @@ export interface ErrorFamilyOperator<
      * Allows a single error class to be dispatched to different cases based on runtime properties.
      */
     bridge<
-        T extends {new (...args: never[]): Error; readonly prototype: Error},
+        T extends { new (...args: never[]): Error; readonly prototype: Error },
         C extends ErrorUnionOfMap<M>,
         E extends InstanceOfError<T>,
     >(
         errorClass: T,
         mapper: (
             e: E,
-            cases: {[K in keyof M & string]: ErrorCase<K, M[K]>},
+            cases: { [K in keyof M & string]: ErrorCase<K, M[K]> },
         ) => C,
     ): ErrorFamily<M, Upsert<Es, E, C>>;
 
@@ -180,7 +180,7 @@ export type ErrorFamily<
  * interface, ensuring that subtype-specific properties (e.g., SyntaxError.lineNumber)
  * are preserved in the transformer.
  */
-export type InstanceOfError<T> = T extends {readonly prototype: infer P}
+export type InstanceOfError<T> = T extends { readonly prototype: infer P }
     ? P extends Error
         ? P
         : Error

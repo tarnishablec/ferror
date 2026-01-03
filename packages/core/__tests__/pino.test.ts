@@ -3,10 +3,10 @@
  */
 
 // noinspection ES6UnusedImports
-import {describe, expect, test} from "bun:test";
-import {codeOf, payloadOf, type ThatError} from "@thaterror/core";
+import { describe, expect, test } from "bun:test";
+import { codeOf, payloadOf, type ThatError } from "@thaterror/core";
 import pino from "pino";
-import {AppError} from "./define-error.test.ts";
+import { AppError } from "./define-error.test.ts";
 
 describe("pino logger test", () => {
     test("should log error with custom serializers", () => {

@@ -26,8 +26,7 @@
         "formatter": {
             "quoteStyle": "double",
             "semicolons": "always",
-            "lineEnding": "lf",
-            "bracketSpacing": false
+            "lineEnding": "lf"
         }
     },
     "assist": {
