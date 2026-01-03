@@ -1,3 +1,7 @@
+/*
+ * Copyright 2019-Present tarnishablec. All Rights Reserved.
+ */
+
 import { describe, expect, test } from "bun:test";
 import { HTTPException } from "hono/http-exception";
 import { AppError } from "./define-error.test";

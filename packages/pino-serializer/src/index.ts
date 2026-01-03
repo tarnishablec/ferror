@@ -1,18 +1,20 @@
+/*
+ * Copyright 2019-Present tarnishablec. All Rights Reserved.
+ */
+
 import {
     codeOf,
     isDefinedError,
     payloadOf,
     type ThatError,
 } from "@thaterror/core";
-import type { LoggerOptions, SerializedError } from "pino";
+import pino, { type LoggerOptions, type SerializedError } from "pino";
 
 export const thaterrorSerializer = (e: ThatError): SerializedError => {
+    const pinoErr = pino.stdSerializers.errWithCause(e);
+
     return {
-        type: e.constructor.name,
-        message: e.message,
-        stack: e.stack ?? "",
-        raw: e,
-        name: e.name,
+        ...pinoErr,
         code: codeOf(e),
         payload: payloadOf(e),
     };

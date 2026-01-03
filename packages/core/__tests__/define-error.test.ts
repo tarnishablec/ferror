@@ -1,3 +1,7 @@
+/*
+ * Copyright 2019-Present tarnishablec. All Rights Reserved.
+ */
+
 import { describe, expect, test } from "bun:test";
 import {
     CodeField,

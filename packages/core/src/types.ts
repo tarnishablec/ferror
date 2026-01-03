@@ -1,3 +1,7 @@
+/*
+ * Copyright 2019-Present tarnishablec. All Rights Reserved.
+ */
+
 export const ErrorBrand: unique symbol = Symbol("FErrorBrand");
 export const ScopeField: unique symbol = Symbol("FErrorScope");
 export const PayloadField: unique symbol = Symbol("FErrorPayload");

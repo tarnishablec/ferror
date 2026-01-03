@@ -1,3 +1,7 @@
+/*
+ * Copyright 2019-Present tarnishablec. All Rights Reserved.
+ */
+
 // noinspection ES6UnusedImports
 import { describe, expect, test } from "bun:test";
 import { codeOf, payloadOf, type ThatError } from "@thaterror/core";

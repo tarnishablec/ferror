@@ -1,3 +1,7 @@
+/*
+ * Copyright 2019-Present tarnishablec. All Rights Reserved.
+ */
+
 import {
     CodeField,
     type DefinedError,
