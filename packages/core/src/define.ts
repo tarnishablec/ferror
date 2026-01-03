@@ -2,7 +2,7 @@
  * Copyright 2019-Present tarnishablec. All Rights Reserved.
  */
 
-import { createFamilyInstance } from "./family.ts";
+import {createFamilyInstance} from "./family.ts";
 import {
     CodeField,
     type DefinedError,

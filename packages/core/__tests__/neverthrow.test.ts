@@ -3,15 +3,10 @@
  */
 
 // noinspection ES6UnusedImports
-import { describe, expect, test } from "bun:test";
-import {
-    codeOf,
-    PayloadField,
-    payloadOf,
-    type ThatError,
-} from "@thaterror/core";
-import { err, fromPromise } from "neverthrow";
-import { AppError } from "./define-error.test";
+import {describe, expect, test} from "bun:test";
+import {codeOf, PayloadField, payloadOf, type ThatError} from "@thaterror/core";
+import {err, fromPromise} from "neverthrow";
+import {AppError} from "./define-error.test";
 
 describe("neverthrow test", () => {
     test("should infer Error type", () => {
@@ -37,7 +32,7 @@ describe("neverthrow test", () => {
             const promise = Promise.reject(new Error("fetchData"));
 
             return fromPromise(promise, (e) =>
-                AppError.NotFound(id).with({ cause: e }),
+                AppError.NotFound(id).with({cause: e}),
             );
         };
 

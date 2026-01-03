@@ -2,7 +2,7 @@
  * Copyright 2019-Present tarnishablec. All Rights Reserved.
  */
 
-import { type DefinedError, ErrorBrand, ScopeField } from "./types";
+import {type DefinedError, ErrorBrand, ScopeField} from "./types";
 
 export function isDefinedError<E extends DefinedError>(
     error: unknown,

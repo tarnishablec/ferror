@@ -3,9 +3,9 @@
  */
 
 // noinspection ES6UnusedImports
-import { describe, expect, test } from "bun:test";
-import { That } from "@thaterror/core";
-import { ResultAsync } from "neverthrow";
+import {describe, expect, test} from "bun:test";
+import {That} from "@thaterror/core";
+import {ResultAsync} from "neverthrow";
 
 describe("ThatError Location Anchoring", () => {
     const AppError = That({
@@ -124,7 +124,7 @@ describe("ThatError Location Anchoring", () => {
                  * By calling .at() inside this anonymous closure, we lock the stack
                  * to this exact line in the business logic.
                  */
-                return AppError.ASYNC_ERR(url).with({ cause: error });
+                return AppError.ASYNC_ERR(url).with({cause: error});
             },
         );
 
