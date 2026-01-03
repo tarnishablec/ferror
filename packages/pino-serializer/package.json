@@ -1,5 +1,6 @@
 {
     "name": "@thaterror/pino-serializer",
+    "version": "0.2.13",
     "module": "src/index.ts",
     "type": "module",
     "private": true,
@@ -20,6 +21,6 @@
     "peerDependencies": {
         "pino": "^10.1.0",
         "typescript": "^5.9.3",
-        "@thaterror/core": "workspace:../core"
+        "@thaterror/core": "workspace:*"
     }
 }
