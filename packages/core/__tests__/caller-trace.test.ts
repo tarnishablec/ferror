@@ -89,7 +89,7 @@ describe("ThatError Location Anchoring", () => {
                  * 💡 THE ANCHOR POINT
                  * We call .at() here to explicitly mark this line as the "Crime Scene".
                  */
-                return AppError.SYNC_ERR().with(void 0, {stage: 'init'});
+                return AppError.SYNC_ERR().with(void 0, {stage: 'init'}).with(void 0, {region: "CN"});
             }
 
             const err = businessFunction();
@@ -100,7 +100,7 @@ describe("ThatError Location Anchoring", () => {
             expect(topFrame).toContain("businessFunction");
             expect(topFrame).toContain(currentFileName);
 
-            expect(metaOf(err)).toEqual({stage: 'init'});
+            expect(metaOf(err)).toEqual({stage: 'init', region: "CN"});
 
             // 🛡️ Noise Removal: The factory internals (define.ts) must be sliced off.
             expect(topFrame).not.toContain("define.ts");

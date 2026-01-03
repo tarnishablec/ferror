@@ -52,10 +52,10 @@ export function That<const M extends ErrorMap>(
                 Error.captureStackTrace(this, _caller);
             }
 
-            with<Me extends Record<string, unknown>>(options?: ErrorOptions, meta?: Me) {
+            with<Mt extends Record<string, unknown>>(options?: ErrorOptions, meta?: Mt) {
                 this.cause = options?.cause;
                 this[MetaField] = {...this[MetaField], ...meta};
-                return this as this & DefinedError<Extract<keyof M, string>, ExtractPayload<M[Extract<keyof M, string>]>, Record<string, unknown> & Me>;
+                return this as DefinedError<Code, Payload, Mt>;
             }
 
             is<K extends string, S extends ErrorSpec>(errorCase: ErrorCase<K, S>): this is DefinedError<K, ExtractPayload<S>> {

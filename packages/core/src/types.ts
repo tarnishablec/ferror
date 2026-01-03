@@ -15,7 +15,7 @@ export interface DefinedError<
     readonly [CodeField]: Code;
     [MetaField]: Meta;
 
-    with<Me extends Record<string, unknown>>(options?: ErrorOptions, meta?: Me): this & DefinedError<Code, Payload, Meta & Me>;
+    with<Me extends Record<string, unknown>>(options?: ErrorOptions, meta?: Me): DefinedError<Code, Payload, Meta & Me>;
 
     is<K extends string, S extends ErrorSpec>(errorCase: ErrorCase<K, S>): this is DefinedError<K, ExtractPayload<S>>;
 }
