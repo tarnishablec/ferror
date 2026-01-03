@@ -93,6 +93,9 @@ jobs:
                       });
                     "
 
+            -   name: Sync Bun Lockfile
+                run: bun update --lockfile-only
+
             -   name: Fix formatting with Biome
                 run: biome check --write packages/*/package.json package.json
 

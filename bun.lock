@@ -15,7 +15,7 @@
     },
     "packages/core": {
       "name": "@thaterror/core",
-      "version": "0.3.2",
+      "version": "0.3.5",
       "devDependencies": {
         "hono": "^4.11.3",
         "neverthrow": "^8.2.0",
@@ -24,12 +24,12 @@
     },
     "packages/pino-adapter": {
       "name": "@thaterror/pino-adapter",
-      "version": "0.3.2",
+      "version": "0.3.5",
       "devDependencies": {
         "@types/bun": "latest",
       },
       "peerDependencies": {
-        "@thaterror/core": "file:../core",
+        "@thaterror/core": "workspace:*",
         "pino": "^10.1.0",
         "typescript": "^5.9.3",
       },
