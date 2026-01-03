@@ -29,7 +29,7 @@ describe('neverthrow test', () => {
 
             return fromPromise(
                 promise,
-                (e) => AppError.NotFound(id).at({cause: e})
+                (e) => AppError.NotFound(id).with({cause: e})
             );
         };
 

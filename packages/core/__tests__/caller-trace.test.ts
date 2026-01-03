@@ -1,6 +1,6 @@
 // noinspection ES6UnusedImports
 import { describe, expect, test } from "bun:test";
-import { That } from '@thaterror/core';
+import { metaOf, That } from '@thaterror/core';
 import { ResultAsync } from 'neverthrow';
 
 describe("ThatError Location Anchoring", () => {
@@ -84,27 +84,31 @@ describe("ThatError Location Anchoring", () => {
 
     // --- Scenario 4: Synchronous Business Logic ---
     test("Sync: stack trace should anchor at the business caller via .at()", () => {
-        function businessFunction() {
-            /**
-             * 💡 THE ANCHOR POINT
-             * We call .at() here to explicitly mark this line as the "Crime Scene".
-             */
-            return AppError.SYNC_ERR().at({context: {stage: 'init'}});
+            function businessFunction() {
+                /**
+                 * 💡 THE ANCHOR POINT
+                 * We call .at() here to explicitly mark this line as the "Crime Scene".
+                 */
+                return AppError.SYNC_ERR().with(void 0, {stage: 'init'});
+            }
+
+            const err = businessFunction();
+            const stack = err.stack ?? "";
+            const topFrame = stack.split("\n")[1];
+
+            // 🎯 Verification: The first frame must point to 'businessFunction' in THIS file.
+            expect(topFrame).toContain("businessFunction");
+            expect(topFrame).toContain(currentFileName);
+
+            expect(metaOf(err)).toEqual({stage: 'init'});
+
+            // 🛡️ Noise Removal: The factory internals (define.ts) must be sliced off.
+            expect(topFrame).not.toContain("define.ts");
+
+            console.log(stack.split("\n").slice(0, 4).join("\n"));
         }
-
-        const err = businessFunction();
-        const stack = err.stack ?? "";
-        const topFrame = stack.split("\n")[1];
-
-        // 🎯 Verification: The first frame must point to 'businessFunction' in THIS file.
-        expect(topFrame).toContain("businessFunction");
-        expect(topFrame).toContain(currentFileName);
-
-        // 🛡️ Noise Removal: The factory internals (define.ts) must be sliced off.
-        expect(topFrame).not.toContain("define.ts");
-
-        console.log(stack.split("\n").slice(0, 4).join("\n"));
-    });
+    )
+    ;
 
     // --- Scenario 5: Neverthrow Async Callback ---
     test("Async: stack trace should anchor inside neverthrow callback via .at()", async () => {
@@ -120,7 +124,7 @@ describe("ThatError Location Anchoring", () => {
                  * By calling .at() inside this anonymous closure, we lock the stack
                  * to this exact line in the business logic.
                  */
-                return AppError.ASYNC_ERR(url).at({cause: error});
+                return AppError.ASYNC_ERR(url).with({cause: error});
             }
         );
 

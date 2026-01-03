@@ -64,7 +64,9 @@ export const AppError = That({
     // Dynamic message (with Payload)
     NotFound: (id: number) => `Resource ${id} not found`,
 
-    DatabaseError: (query: string) => `Database Error: ${query}`
+    DatabaseError: (query: string) => `Database Error: ${query}`,
+
+    ConnectionError: (url: string) => `Failed to connect: ${url}`
 }).enroll(/** your external errors */)
     .enroll(/** ... */)
     .bridge(/** ... */)
@@ -151,22 +153,22 @@ like [neverthrow](https://github.com/supermacro/neverthrow) 's `ResultAsync.from
 the library's internal dispatchers rather than your business logic.
 
 ```ts
-import { ResultAsync } from 'neverthrow';
+import {ResultAsync} from 'neverthrow';
+import {AppError} from "./error";
 
 function connectToDatabase(url: string) {
     return ResultAsync.fromPromise(
         fetch(url),
-        (err) => {
+        (_err) => {
             // 🚨 THE ISSUE:
             // When this callback is executed, the physical execution flow 
             // is already deep inside neverthrow's internal logic.
-            // A standard 'new Error' captures a snapshot full of library noise.
-            return new Error(`Failed to connect: ${url}`);
+            return AppError.ConnectionError(url);
         }
     );
 }
 
-const result = await connectToDatabase("ws://localhost:3000");
+const result = await connectTo("ws://localhost:3000");
 if (result.isErr()) {
     console.log(result.error.stack);
 }
@@ -181,42 +183,29 @@ Error: Failed to connect: "ws://localhost:3000"
 
 You’ll notice the top frames point to internal files of `neverthrow`, making it impossible to see where your business logic actually failed.
 
-`thaterror` solves this by decoupling **Error Creation** from **Context Annotation**.
+### The "Magic" of `.with()`
 
-### The "Magic" of `.at()`
-
-By using the chainable `.at()`  method, you force the V8 engine to capture the stack trace at the **exact
+By using the chainable `.with()`  method, you force the V8 engine to capture the stack trace at the **exact
 moment** of failure within your callback.
 
 ```typescript
 // 🟢 The ResultAsync Way (Best Practice)
 return ResultAsync.fromPromise(
     client.connect(url),
-    (error) => MCPError.CONNECTION_FAILED(url).at({ cause: error }) // or leave it empty `.at()`
+    (error) => MCPError.CONNECTION_FAILED(url).with({ cause: error })
 );
 ```
 🎯 The "Crime Scene": Callback Freedom
-With the .at() anchor, you are finally free to nest your business logic deep within any callback without fear of losing context.
+With the .with() anchor, you are finally free to nest your business logic deep within any callback without fear of losing context.
 
-To be honest, at the implementation level, `.at()` is almost a "no-op" (it just returns `this`). However, in the physical world of V8 and asynchronous microtasks, it acts as a **Quantum Observer**.
+To be honest, at the implementation level, `.with()` is almost a "no-op" (it just returns `this`). However, in the physical world of V8 and asynchronous microtasks, it acts as a **Quantum Observer**.
 
 #### Why "It Just Works":
-- **Microtask Locking**: By calling `.at()` immediately within your callback, you force the engine to interact with the error object before the current microtask ends. This "extra step" effectively nails the stack trace to the physical floor before the asynchronous execution context evaporates.
+- **Microtask Locking**: By calling `.with()` immediately within your callback, you force the engine to interact with the error object before the current microtask ends. This "extra step" effectively nails the stack trace to the physical floor before the asynchronous execution context evaporates.
 - **Optimization Barrier**: It prevents the JIT compiler from over-optimizing (inlining) the factory call into the library's internal dispatchers, preserving the "Crime Scene" frames.
 - **Future-Proofing**: It provides a stable entry point for future metadata (like `traceId` or `severity`) without refactoring your entire codebase.
 
-> **Man, what can I say?** We can't fully explain why the ghost of the stack trace stays longer when you call `.at()`, but the experimental evidence is clear: **It just works.** Call it, and you'll never have to guess where your errors came from again.
-
-## 🔍 Why thaterror?
-
-### Overcoming Structural Typing
-
-In TypeScript, two different classes with the same members are considered identical. This makes traditional `instanceof`
-checks brittle in certain architectural setups.
-
-`thaterror` implements **Nominal Typing** via internal `Scope` symbols and advanced type gymnastics. Even if two errors
-look identical structurally, `thaterror` distinguishes them based on their registration and scope, providing much-needed
-reliability in complex apps.
+> **Man, what can I say?** We can't fully explain why the ghost of the stack trace stays longer when you call `.with()`, but the experimental evidence is clear: **It just works.** Call it, and you'll never have to guess where your errors came from again.
 
 ## 📜 License
 

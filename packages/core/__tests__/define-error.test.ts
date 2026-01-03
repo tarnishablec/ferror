@@ -72,12 +72,12 @@ describe("defineError strict type testing", () => {
 
     test("should support native Error.cause (#[source])", () => {
         const original = new Error("Connection lost");
-        const err = AppError.Unauthorized().at({cause: original});
+        const err = AppError.Unauthorized().with({cause: original});
 
         expect(err.cause).toBe(original);
 
         const shardOriginal = new Error("Shard not found");
-        const shardErr = AppError.ShardError(1, "shard-1").at({cause: shardOriginal});
+        const shardErr = AppError.ShardError(1, "shard-1").with({cause: shardOriginal});
         expect(shardErr.cause).toBe(shardOriginal);
     });
 

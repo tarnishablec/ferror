@@ -1,4 +1,12 @@
-import { CodeField, type DefinedError, type ErrorCase, type ErrorFamily, PayloadField, ScopeField } from "./types";
+import {
+    CodeField,
+    type DefinedError,
+    type ErrorCase,
+    type ErrorFamily,
+    MetaField,
+    PayloadField,
+    ScopeField
+} from "./types";
 
 export interface Scoped {
     readonly [ScopeField]: symbol;
@@ -22,4 +30,8 @@ export function payloadOf<E extends DefinedError>(error: E): E[typeof PayloadFie
 
 export function codeOf<E extends DefinedError>(error: E): E[typeof CodeField] {
     return error[CodeField];
+}
+
+export function metaOf<E extends DefinedError>(error: E): Record<string, unknown> {
+    return error[MetaField] ?? {};
 }
