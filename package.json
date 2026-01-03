@@ -20,6 +20,7 @@
     "scripts": {
         "test": "bun test",
         "type-check": "tsc --noEmit",
+        "lint": "biome ",
         "syncpack:list": "syncpack list-mismatches",
         "syncpack:fix": "syncpack fix-mismatches",
         "install:clean": "bun pm cache rm && bunx rimraf bun.lock bun.lockb && bun install"

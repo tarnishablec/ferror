@@ -1,26 +1,26 @@
 {
-  "name": "@thaterror/pino-serializer",
-  "version": "0.3.0",
-  "module": "src/index.ts",
-  "type": "module",
-  "private": true,
-  "devDependencies": {
-    "@types/bun": "latest"
-  },
-  "main": "src/index.ts",
-  "exports": {
-    ".": {
-      "default": "./src/index.ts"
+    "name": "@thaterror/pino-serializer",
+    "version": "0.3.0",
+    "module": "src/index.ts",
+    "type": "module",
+    "private": true,
+    "devDependencies": {
+        "@types/bun": "latest"
+    },
+    "main": "src/index.ts",
+    "exports": {
+        ".": {
+            "default": "./src/index.ts"
+        }
+    },
+    "files": [
+        "src",
+        "package.json",
+        "README.md"
+    ],
+    "peerDependencies": {
+        "pino": "^10.1.0",
+        "typescript": "^5.9.3",
+        "@thaterror/core": "workspace:*"
     }
-  },
-  "files": [
-    "src",
-    "package.json",
-    "README.md"
-  ],
-  "peerDependencies": {
-    "pino": "^10.1.0",
-    "typescript": "^5.9.3",
-    "@thaterror/core": "workspace:*"
-  }
 }
