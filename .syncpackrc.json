@@ -5,7 +5,7 @@
             "label": "Use workspace protocol when developing local packages",
             "dependencies": ["$LOCAL"],
             "dependencyTypes": ["peer", "dev", "prod"],
-            "pinVersion": "file:../core"
+            "pinVersion": "workspace:*"
         }
     ]
 }
