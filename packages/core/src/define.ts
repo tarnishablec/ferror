@@ -18,7 +18,7 @@ import {
 export function That<const M extends ErrorMap>(
     map: M
 ): ErrorFamily<M> {
-    const scope = Symbol("ErrorFamilyScope");
+    const scope = Symbol();
     const cases: Partial<ErrorFamilyCases<M>> = {};
 
     for (const key in map) {

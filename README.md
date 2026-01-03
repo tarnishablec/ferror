@@ -63,13 +63,9 @@ export const AppError = That({
 
     // Dynamic message (with Payload)
     NotFound: (id: number) => `Resource ${id} not found`,
-
     DatabaseError: (query: string) => `Database Error: ${query}`,
-
     ConnectionError: (url: string) => `Failed to connect: ${url}`
-}).enroll(/** your external errors */)
-    .enroll(/** ... */)
-    .bridge(/** ... */)
+})
 ```
 
 ### 2. Throw and Catch
@@ -78,7 +74,7 @@ export const AppError = That({
 import {AppErrors} from "./errors";
 
 // Throwing
-throw AppError.NotFound(404);
+throw AppError.NotFound(123);
 ```
 
 ## 🛠️ Advanced: Adopting External Errors
@@ -104,7 +100,7 @@ const ExAppError = AppError.enroll(MyLegacyError, AppError.NotFound, (e) => [Num
 
 // Now, MyFamily.from can recognize and transform MyLegacyError instances
 const err = ExAppError.from(new MyLegacyError("123"));
-// err is now typed as AppError.NotFound
+// err is now typed as AppError.NotFound & payloadOf(err) === [123] (number)
 ```
 
 ### `bridge` (One-to-Many/Conditional Mapping)
@@ -120,8 +116,10 @@ const ExAppError = AppError.bridge(HTTPException, (e, cases) => {
             return cases.NotFound(0);
         case 401:
             return cases.Unauthorized();
-        default:
+        case 500:
             return cases.DatabaseError(e.message);
+        default:
+            return cases.ConnectionError(e.res?.url ?? 'invalid url');
     }
 });
 ```
@@ -135,13 +133,10 @@ error is passed, the TypeScript compiler will flag it.
 try {
     // ...
 } catch (e: unknown) {
-    if (e instanceof Error) {
+    if (e instanceof MyLegacyError) {
         // If 'e' might be an unregistered error class, TS will alert you here
         const error = MyFamily.from(e);
-
-        if (error.is(AppError.NotFound)) {
-            // ...
-        }
+        // error is typed as MyFamily.NotFound
     }
 }
 ```
