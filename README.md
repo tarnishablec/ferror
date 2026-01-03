@@ -172,8 +172,7 @@ The Resulting "Messy" Stack Trace:
 ```shell
 Error: Failed to connect: "ws://localhost:3000"
     at /project/node_modules/neverthrow/dist/index.cjs.js:106:34  <-- 🛑 Useless! Internal library code.
-    at processTicksAndRejections (node:internal/process/task_queues:95:5)
-    at async /project/src/main.ts:15:20
+    at processTicksAndRejections (native)
 ```
 
 You’ll notice the top frames point to internal files of `neverthrow`, making it impossible to see where your business logic actually failed.
@@ -196,8 +195,7 @@ now the stack trace points to your business logic:
 Error: Failed to connect: "ws://localhost:3000"
     at /project/mcp/client.ts:15:11  <-- 🟢 Useful! Business code.
     at /project/node_modules/neverthrow/dist/index.cjs.js:106:34 
-    at processTicksAndRejections (node:internal/process/task_queues:95:5)
-    at async /project/src/main.ts:15:20
+    at processTicksAndRejections (native)
 ```
 
 🎯 The "Crime Scene": Callback Freedom
