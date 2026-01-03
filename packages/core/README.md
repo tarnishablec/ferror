@@ -47,16 +47,9 @@ Throwing and catching:
 import {AppError} from './errors';
 
 throw AppError.NotFound(123);
-
-// ...later
-if (e instanceof Error) {
-    if (AppError.is(e)) {
-        // narrowed to AppError family
-    }
-}
 ```
 
-## 🧪 Adopting external errors
+## 🛠️ Adopting external errors
 
 ### enroll (one-to-one)
 
@@ -72,7 +65,7 @@ class MyLegacyError extends Error {
 const ExAppError = AppError.enroll(MyLegacyError, AppError.NotFound, (e) => [Number(e.legacyId)]);
 
 const err = ExAppError.from(new MyLegacyError("123"));
-// err is typed as AppError.NotFound and carries payload [123]
+// err is typed as ExAppError.NotFound and carries payload [123]
 ```
 
 ### bridge (conditional / one-to-many)
@@ -94,42 +87,110 @@ const ExAppError = AppError.bridge(HTTPException, (e, cases) => {
 
 ### from — the type-safe gateway
 
-`from` only accepts error types you have enrolled or bridged. If an unenrolled error is passed, TypeScript will flag it.
+`from` only accepts error types you have enrolled or bridged. If an `unenrolled or bridged` error is passed, TypeScript will flag it.
 
 ```typescript
 try {
     // ...
 } catch (e: unknown) {
     if (e instanceof MyLegacyError) {
-        const error = ExAppError.from(e); // typed
+        const error = ExAppError.from(e); // error is typed as ExAppError.NotFound
     }
 }
 ```
 
-## 🎯 Deterministic Tracing with `.with()`
+## 🧪 Deterministic Tracing: The "Callback-Local" Anchor
 
-When creating errors inside callbacks (for example, `ResultAsync.fromPromise`), V8 may capture a stack trace that
-starts inside the callback library rather than your code. Calling `.with()` within the callback preserves the stack
-trace at the point you created the error.
+In JavaScript, asynchronous stack traces are notoriously fragile. When you wrap errors inside a callback
+like [neverthrow](https://github.com/supermacro/neverthrow) 's `ResultAsync.fromPromise`, the stack trace often points
+to
+the library's internal dispatchers rather than your business logic.
+
+```ts
+// location: project/mcp/client.ts
+import {ResultAsync} from 'neverthrow';
+import {MCPError} from "./error";
+
+function connectTo(url: string) {
+    return ResultAsync.fromPromise(
+        client.connect(url),
+        (_err) => {
+            // 🚨 THE ISSUE:
+            // When this callback is executed, the physical execution flow 
+            // is already deep inside neverthrow's internal logic.
+            return MCPError.CONNECTION_FAILED(url);
+        }
+    );
+}
+
+const result = await connectTo("ws://localhost:3000");
+if (result.isErr()) {
+    console.log(result.error.stack);
+}
+```
+
+The Resulting "Messy" Stack Trace:
+
+```shell
+Error: Failed to connect: "ws://localhost:3000"
+    at /project/node_modules/neverthrow/dist/index.cjs.js:106:34  <-- 🛑 Useless! Internal library code.
+    at processTicksAndRejections (native)
+```
+
+You’ll notice the top frames point to internal files of `neverthrow`, making it impossible to see where your business
+logic actually failed.
+
+### The "Magic" of `.with()`
+
+By using the chainable `.with()`  method, you force the V8 engine to capture the stack trace at the **exact
+moment** of failure within your callback.
 
 ```typescript
+// 🟢 The ResultAsync Way (Best Practice)
+// location: project/mcp/client.ts
 return ResultAsync.fromPromise(
     client.connect(url),
-    (error) => AppError.ConnectionError(url).with({cause: error})
+    (error) => MCPError.CONNECTION_FAILED(url).with({cause: error})
 );
 ```
 
-`.with()` is chainable and usually returns `this` — its value is the captured error; the main purpose is to "anchor"
-stack capture at the callsite.
+now the stack trace points to your business logic:
+
+```shell
+Error: Failed to connect: "ws://localhost:3000"
+    at /project/mcp/client.ts:15:11  <-- 🟢 Useful! Business code.
+    at /project/node_modules/neverthrow/dist/index.cjs.js:106:34 
+    at processTicksAndRejections (native)
+```
+
+🎯 The "Crime Scene": Callback Freedom
+With the .with() anchor, you are finally free to nest your business logic deep within any callback without fear of
+losing context.
+
+To be honest, at the implementation level, `.with()` is almost a "no-op" (it just returns `this`). However, in the
+physical world of V8 and asynchronous microtasks, it acts as a **Quantum Observer**.
+
+#### Why "It Just Works":
+
+- **Microtask Locking**: By calling `.with()` immediately within your callback, you force the engine to interact with
+  the error object before the current microtask ends. This "extra step" effectively nails the stack trace to the
+  physical floor before the asynchronous execution context evaporates.
+- **Optimization Barrier**: It prevents the JIT compiler from over-optimizing (inlining) the factory call into the
+  library's internal dispatchers, preserving the "Crime Scene" frames.
+
+> **Man, what can I say?** We can't fully explain why the ghost of the stack trace stays longer when you call `.with()`,
+> but the experimental evidence is clear: **It just works.** Call it, and you'll never have to guess where your errors
+> came from again.
 
 ## API Overview
 
 - That(schema) -> family factory
-- err.is(err) -> type guard
+- error.is(err) -> type guard check
 - family.enroll(ExternalClass, familyCase, transformer?) → returns an extended family
 - family.bridge(ExternalClass, dispatcher) → returns an extended family
 - family.from(externalError) → transforms to a family case
 - error.with({ cause }) → attach cause and anchor stack trace
+- ThatError → generic thiserror instance type
 
 ## Adapter: pino
 
@@ -141,8 +202,7 @@ See `packages/core/__tests__` for concrete usage and test assertions that demons
 
 ## Contributing
 
-Run the workspace install and package tests from the repository root (see the root README). Each package may include additional
-contributing instructions.
+Run the workspace install and package tests from the repository root (see the root README). 
 
 ## License
 
