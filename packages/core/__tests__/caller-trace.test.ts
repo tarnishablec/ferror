@@ -1,6 +1,6 @@
 // noinspection ES6UnusedImports
 import { describe, expect, test } from "bun:test";
-import { metaOf, That } from '@thaterror/core';
+import { That } from '@thaterror/core';
 import { ResultAsync } from 'neverthrow';
 
 describe("ThatError Location Anchoring", () => {
@@ -89,7 +89,7 @@ describe("ThatError Location Anchoring", () => {
                  * 💡 THE ANCHOR POINT
                  * We call .at() here to explicitly mark this line as the "Crime Scene".
                  */
-                return AppError.SYNC_ERR().with(void 0, {stage: 'init'}).with(void 0, {region: "CN"});
+                return AppError.SYNC_ERR().with(void 0);
             }
 
             const err = businessFunction();
@@ -99,8 +99,6 @@ describe("ThatError Location Anchoring", () => {
             // 🎯 Verification: The first frame must point to 'businessFunction' in THIS file.
             expect(topFrame).toContain("businessFunction");
             expect(topFrame).toContain(currentFileName);
-
-            expect(metaOf(err)).toEqual({stage: 'init', region: "CN"});
 
             // 🛡️ Noise Removal: The factory internals (define.ts) must be sliced off.
             expect(topFrame).not.toContain("define.ts");

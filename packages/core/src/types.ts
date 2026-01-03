@@ -2,20 +2,17 @@ export const ErrorBrand: unique symbol = Symbol("FErrorBrand");
 export const ScopeField: unique symbol = Symbol("FErrorScope");
 export const PayloadField: unique symbol = Symbol("FErrorPayload");
 export const CodeField: unique symbol = Symbol("FErrorCode");
-export const MetaField: unique symbol = Symbol("FErrorMeta");
 
 export interface DefinedError<
     Code extends string = string,
     Payload extends readonly unknown[] = readonly unknown[],
-    Meta = Record<string, unknown>
 > extends Error {
     readonly [ErrorBrand]: true;
     readonly [ScopeField]: symbol;
     readonly [PayloadField]: Payload;
     readonly [CodeField]: Code;
-    [MetaField]: Meta;
 
-    with<Me extends Record<string, unknown>>(options?: ErrorOptions, meta?: Me): DefinedError<Code, Payload, Meta & Me>;
+    with(options?: ErrorOptions): this;
 
     is<K extends string, S extends ErrorSpec>(errorCase: ErrorCase<K, S>): this is DefinedError<K, ExtractPayload<S>>;
 }

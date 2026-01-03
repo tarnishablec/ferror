@@ -10,7 +10,6 @@ import {
     type ErrorSpec,
     type ErrorUnionOfMap,
     type ExtractPayload,
-    MetaField,
     PayloadField,
     ScopeField
 } from "./types";
@@ -33,7 +32,6 @@ export function That<const M extends ErrorMap>(
             readonly [ScopeField]: symbol;
             readonly [PayloadField]: Payload;
             readonly [CodeField]: Code;
-            [MetaField]: Record<string, unknown>;
 
             constructor(
                 _caller: (...args: Payload) => ErrorUnionOfMap<M>,
@@ -47,15 +45,13 @@ export function That<const M extends ErrorMap>(
                 this[CodeField] = code;
                 this[ScopeField] = scope;
                 this[PayloadField] = args;
-                this[MetaField] = {};
 
                 Error.captureStackTrace(this, _caller);
             }
 
-            with<Mt extends Record<string, unknown>>(options?: ErrorOptions, meta?: Mt) {
+            with(options?: ErrorOptions) {
                 this.cause = options?.cause;
-                this[MetaField] = {...this[MetaField], ...meta};
-                return this as DefinedError<Code, Payload, Mt>;
+                return this;
             }
 
             is<K extends string, S extends ErrorSpec>(errorCase: ErrorCase<K, S>): this is DefinedError<K, ExtractPayload<S>> {
