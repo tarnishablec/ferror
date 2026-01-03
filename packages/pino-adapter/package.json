@@ -3,7 +3,6 @@
     "version": "0.3.1",
     "module": "src/index.ts",
     "type": "module",
-    "private": true,
     "licenses": [
         {
             "type": "MPL-2.0",
