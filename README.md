@@ -187,7 +187,7 @@ moment** of failure within your callback.
 // 🟢 The ResultAsync Way (Best Practice)
 return ResultAsync.fromPromise(
     client.connect(url),
-    (error) => MCPError.CONNECTION_FAILED(url).with({ cause: error })
+    (error) => AppError.CONNECTION_FAILED(url).with({ cause: error })
 );
 ```
 🎯 The "Crime Scene": Callback Freedom
