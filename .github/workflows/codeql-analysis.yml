@@ -43,7 +43,7 @@ jobs:
                             - '**/node_modules/**'
 
             -   name: Install Dependencies
-                run: bun install --frozen-lockfile
+                run: bun install
 
             -   name: Perform CodeQL Analysis
                 uses: github/codeql-action/analyze@v4
