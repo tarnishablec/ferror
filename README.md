@@ -149,7 +149,7 @@ the library's internal dispatchers rather than your business logic.
 
 ```ts
 import {ResultAsync} from 'neverthrow';
-import {AppError} from "./error";
+import {MCPError} from "./error";
 
 function connectToDatabase(url: string) {
     return ResultAsync.fromPromise(
