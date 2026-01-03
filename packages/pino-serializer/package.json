@@ -6,6 +6,17 @@
     "devDependencies": {
         "@types/bun": "latest"
     },
+    "main": "src/index.ts",
+    "exports": {
+        ".": {
+            "default": "./src/index.ts"
+        }
+    },
+    "files": [
+        "src",
+        "package.json",
+        "README.md"
+    ],
     "peerDependencies": {
         "pino": "^10.1.0",
         "typescript": "^5.9.3",

@@ -20,7 +20,8 @@
     },
     "files": [
         "src",
-        "package.json"
+        "package.json",
+        "README.md"
     ],
     "devDependencies": {
         "hono": "^4.11.3",
