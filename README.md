@@ -104,7 +104,7 @@ const AppError = That({
     DbError: (query: string) => `db error: ${query}`,
 });
 
-type AppError = ThatError<typeof App>;
+type AppErrorType = ThatError<typeof AppError>;
 
 throw AppError.NotFound('123');
 
