@@ -28,7 +28,7 @@
         "precommit:check": "bun test && bun run lint:check && bun run type-check && bun run syncpack:list",
         "install:clean": "bun pm cache rm && bunx rimraf bun.lock bun.lockb && bun install",
         "version": "changeset version && bun update --lockfile-only",
-        "release": "for dir in packages/*; do (cd \"$dir\" && bun publish || true); done && changeset tag",
+        "release": "set -e; for dir in packages/*; do if [ \"$(jq -r '.private' $dir/package.json)\" != \"true\" ]; then (cd \"$dir\" && bun publish --access public); fi; done && changeset tag",
         "change": "changeset"
     }
 }
