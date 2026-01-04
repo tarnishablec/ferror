@@ -1,5 +1,11 @@
 # @thaterror/core
 
+## 0.3.9
+
+### Patch Changes
+
+- 03e874d: fix: resolve workspace protocol in package.json during release
+
 ## 0.3.8
 
 ### Patch Changes
