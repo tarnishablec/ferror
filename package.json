@@ -27,7 +27,7 @@
         "syncpack:fix": "syncpack fix-mismatches",
         "precommit:check": "bun test && bun run lint:check && bun run type-check && bun run syncpack:list",
         "install:clean": "bun pm cache rm && bunx rimraf bun.lock bun.lockb && bun install",
-        "prepare": "simple-git-hooks",
+        "setup:githooks": "simple-git-hooks",
         "version": "changeset version && bun update --lockfile-only",
         "release": "set -e; for dir in packages/*; do if [ \"$(jq -r '.private' $dir/package.json)\" != \"true\" ]; then (cd \"$dir\" && bun publish --access public); fi; done && changeset tag",
         "change": "changeset"
