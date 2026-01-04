@@ -1,5 +1,11 @@
 # @thaterror/core
 
+## 0.4.0
+
+### Minor Changes
+
+- bb77be4: fix: ensure workspace dependencies are correctly resolved during publish
+
 ## 0.3.9
 
 ### Patch Changes

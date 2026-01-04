@@ -1,5 +1,16 @@
 # @thaterror/pino-adapter
 
+## 1.0.0
+
+### Minor Changes
+
+- bb77be4: fix: ensure workspace dependencies are correctly resolved during publish
+
+### Patch Changes
+
+- Updated dependencies [bb77be4]
+  - @thaterror/core@0.4.0
+
 ## 0.3.9
 
 ### Patch Changes
