@@ -1,0 +1,49 @@
+name: Professional Release Workflow
+
+on:
+    # Phase 1: Manual trigger to prepare the Release PR
+    workflow_dispatch:
+    # Phase 2: Automatic trigger when the PR is merged into main
+    push:
+        branches:
+            - main
+
+permissions:
+    contents: write
+    pull-requests: write
+    id-token: write
+
+jobs:
+    release:
+        name: Release Management
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout Repo
+              uses: actions/checkout@v4
+              with:
+                  # Critical: Fetch full history for accurate changelog generation
+                  fetch-depth: 0
+
+            - name: Setup Bun
+              uses: oven-sh/setup-bun@v2
+              with:
+                  bun-version: latest
+
+            - name: Install Dependencies
+              run: bun install
+
+            - name: Create PR or Publish
+              id: changesets
+              uses: changesets/action@v1
+              with:
+                  # Logic: If .changeset files exist, run 'version' and open/update PR
+                  version: bun run version
+
+                  # Logic: If NO .changeset files exist (post-merge), run 'release'
+                  publish: bun run release
+
+                  # Automatically create the GitHub Release UI page
+                  createGithubReleases: true
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
