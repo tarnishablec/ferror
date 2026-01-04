@@ -4,6 +4,16 @@
 
 ### Minor Changes
 
+- b9336d3: Bump version to 4.0
+
+### Patch Changes
+
+- @thaterror/core@1.0.0
+
+## 1.0.0
+
+### Minor Changes
+
 - bb77be4: fix: ensure workspace dependencies are correctly resolved during publish
 
 ### Patch Changes
