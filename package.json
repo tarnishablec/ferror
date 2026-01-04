@@ -9,6 +9,7 @@
         "@biomejs/biome": "^2.3.11",
         "@changesets/cli": "^2.29.8",
         "@types/bun": "latest",
+        "simple-git-hooks": "^2.13.1",
         "syncpack": "^13.0.4"
     },
     "peerDependencies": {
@@ -26,8 +27,12 @@
         "syncpack:fix": "syncpack fix-mismatches",
         "precommit:check": "bun test && bun run lint:check && bun run type-check && bun run syncpack:list",
         "install:clean": "bun pm cache rm && bunx rimraf bun.lock bun.lockb && bun install",
+        "prepare": "simple-git-hooks",
         "version": "changeset version && bun update --lockfile-only",
         "release": "set -e; for dir in packages/*; do if [ \"$(jq -r '.private' $dir/package.json)\" != \"true\" ]; then (cd \"$dir\" && bun publish --access public); fi; done && changeset tag",
         "change": "changeset"
+    },
+    "simple-git-hooks": {
+        "pre-commit": "bun run lint:check && bun run type-check"
     }
 }
