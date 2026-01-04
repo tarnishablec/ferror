@@ -1,5 +1,11 @@
 # @thaterror/core
 
+## 1.0.1
+
+### Patch Changes
+
+- b2f5772: bump core & pino-adapter to 1.0.1
+
 ## 1.0.0
 
 ## 0.4.0
